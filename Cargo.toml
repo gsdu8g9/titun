@@ -1,0 +1,33 @@
+[package]
+authors = ["sopium"]
+license = "GPL-3.0"
+build = "build.rs"
+name = "titun"
+version = "0.0.1"
+
+[[bin]]
+doc = false
+name = "titun"
+path = "src/main.rs"
+
+[build-dependencies]
+gcc = "0.3"
+
+[dependencies]
+byteorder = "1.0.0"
+clap = "2.19.3"
+data-encoding = "1.1.2"
+env_logger = "0.3.5"
+futures = "0.1.7"
+log = "0.3.6"
+mio = "0.6.2"
+nix = "0.7.0"
+serde = "0.8.21"
+serde_derive = "0.8.21"
+serde_yaml = "0.5.0"
+sodiumoxide = "0.0.12"
+tokio-core = "0.1.2"
+
+[lib]
+name = "titun"
+path = "src/lib.rs"

@@ -1,0 +1,11 @@
+[Unit]
+Description=TiTun instance %I
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/titun tun -c /etc/titun/%I.yml
+Restart=always
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target
