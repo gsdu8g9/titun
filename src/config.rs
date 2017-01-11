@@ -21,8 +21,6 @@ use sodiumoxide::crypto::secretbox::{Key, gen_key, KEYBYTES};
 use std::io::{Error, ErrorKind};
 use map_err_io::MapErrIo;
 
-// TODO warn about un-recognised configs.
-
 #[derive(Serialize, Deserialize)]
 struct Config1 {
     pub bind: Option<String>,
@@ -44,7 +42,17 @@ pub struct Config {
 
 impl Config {
     pub fn parse(s: &str) -> Result<Config, Error> {
-        let c: Config1 = yaml::from_str(s).map_err_io()?;
+        let v: yaml::Value = yaml::from_str(s).map_err_io()?;
+        if let yaml::Value::Mapping(ref m) = v {
+            for k in m.keys() {
+                let k = k.as_str().unwrap();
+                match k {
+                    "bind" | "peer" | "key" | "config_script" | "bufsize" => {}
+                    _ => warn!("unknown config {}", k),
+                }
+            }
+        }
+        let c: Config1 = yaml::from_value(v).map_err_io()?;
         let key = decode_key(&c.key)
             .ok_or_else(|| Error::new(ErrorKind::Other, "Config: Failed to decode key"))?;
         if c.peer.is_none() && c.bind.is_none() {
