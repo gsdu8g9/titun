@@ -62,11 +62,14 @@ pub fn titun_get_future(config: &Config,
         Some(remote_addr.clone())
     };
 
+    let log_dedup = Rc::new(RefCell::new(LogDedup::new()));
+
     let sock_to_tun = SockToTun {
         key: config.key.clone(),
         sock: sock.clone(),
         tun: tun.clone(),
         remote_addr: remote_addr1,
+        log_dedup: log_dedup.clone(),
         buf: vec![0u8; config.bufsize],
         buf_to_write: None,
     };
@@ -76,6 +79,7 @@ pub fn titun_get_future(config: &Config,
         sock: sock,
         tun: tun,
         remote_addr: remote_addr,
+        log_dedup: log_dedup,
         buf: vec![0u8; config.bufsize],
         buf_to_send: None,
     };
@@ -106,6 +110,7 @@ struct SockToTun {
     // Don't actually need mutable reference, but make std::io::Write happy.
     tun: Rc<RefCell<PollEvented<Tun>>>,
     remote_addr: Option<Rc<RefCell<Option<SocketAddr>>>>,
+    log_dedup: Rc<RefCell<LogDedup>>,
     buf: Vec<u8>,
     buf_to_write: Option<Vec<u8>>,
 }
@@ -113,8 +118,6 @@ struct SockToTun {
 // poll and try_nb! are somewhat like async/await...
 //
 // but MUCH easier to write than closures.
-
-// TODO rate-limit / merge duplicated logging?
 
 impl Future for SockToTun {
     type Item = ();
@@ -136,7 +139,7 @@ impl Future for SockToTun {
                 }
                 self.buf_to_write = Some(p);
             } else {
-                warn!("decryption failed");
+                self.log_dedup.borrow_mut().warn("decryption failed");
             }
         }
     }
@@ -148,6 +151,7 @@ struct TunToSock {
     // Don't actually need mutable reference, but make std::io::Read happy.
     tun: Rc<RefCell<PollEvented<Tun>>>,
     remote_addr: Rc<RefCell<Option<SocketAddr>>>,
+    log_dedup: Rc<RefCell<LogDedup>>,
     buf: Vec<u8>,
     buf_to_send: Option<Vec<u8>>,
 }
@@ -162,7 +166,9 @@ impl Future for TunToSock {
                 if let Some(ref a) = *self.remote_addr.borrow() {
                     try_nb!(self.sock.send_to(b.as_ref(), a));
                 } else {
-                    warn!("got packet but don't know where to send it, discard");
+                    self.log_dedup
+                        .borrow_mut()
+                        .warn("got packet but don't know where to send it, discard");
                 }
                 None
             } else {
@@ -172,5 +178,52 @@ impl Future for TunToSock {
             let l = try_nb!(self.tun.borrow_mut().read(self.buf.as_mut()));
             self.buf_to_send = Some(encrypt(&self.key, self.buf[..l].as_ref()));
         }
+    }
+}
+
+pub struct LogDedup {
+    previous: Option<&'static str>,
+    times: u32,
+}
+
+impl LogDedup {
+    pub fn new() -> LogDedup {
+        LogDedup {
+            previous: None,
+            times: 0,
+        }
+    }
+
+    pub fn warn(&mut self, s: &'static str) {
+        let p1 = match self.previous {
+            None => {
+                warn!("{}", s);
+                s
+            }
+            Some(p) => {
+                if p != s {
+                    self.clear();
+                    warn!("{}", s);
+                    s
+                } else {
+                    self.times += 1;
+                    p
+                }
+            }
+        };
+        self.previous = Some(p1);
+    }
+
+    fn clear(&mut self) {
+        if self.previous.is_some() && self.times > 0 {
+            warn!("{}: repeated {} times", self.previous.unwrap(), self.times);
+            self.times = 0;
+        }
+    }
+}
+
+impl Drop for LogDedup {
+    fn drop(&mut self) {
+        self.clear();
     }
 }
