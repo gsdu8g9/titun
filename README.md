@@ -12,7 +12,7 @@ USE AT YOUR OWN RISK.
 
 ## Install
 
-You can either build TiTun yourself or download prebuilt binary from GitHub releases.
+You can either build TiTun yourself or download prebuilt binary from [GitHub releases](https://github.com/sopium/titun/releases).
 
 To build TiTun you need the rust toolchain, which can be installed with [rustup](https://github.com/rust-lang-nursery/rustup.rs). You also need libsodium. On recent Debian/Ubuntu systems, you should be able to install it with:
 
