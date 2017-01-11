@@ -27,14 +27,17 @@ use std::net::SocketAddr;
 use std::rc::Rc;
 use systemd_notify::systemd_notify_ready;
 use tokio_core::net::UdpSocket;
-use tokio_core::reactor::{Core, PollEvented};
+use tokio_core::reactor::{Core, Handle, PollEvented};
 use tun::Tun;
 
-pub fn run(config: Config) -> Result<()> {
+/// Return a future that can be run to run the tunnel.
+pub fn titun_get_future(config: &Config,
+                        handle: &Handle)
+                        -> Result<Box<Future<Item = (), Error = Error>>> {
     assert!(config.peer.is_some() || config.bind.is_some());
 
-    let bind = config.bind.unwrap_or("0.0.0.0:0".to_string());
-    let sock = ::std::net::UdpSocket::bind(bind.as_str())?;
+    let bind = config.bind.as_ref().map(|b| b.as_str()).unwrap_or("0.0.0.0:0");
+    let sock = ::std::net::UdpSocket::bind(bind)?;
     info!("Bind succeeded.");
     sock.set_nonblocking(true)?;
 
@@ -42,14 +45,9 @@ pub fn run(config: Config) -> Result<()> {
     info!("Tun device created: {}.", tun.get_name());
     tun.set_nonblocking(true)?;
 
-    if let Some(script) = config.config_script {
+    if let Some(ref script) = config.config_script {
         ScriptRunner::new().env("TUN", tun.get_name()).run(script.as_bytes())?;
     }
-
-    systemd_notify_ready();
-
-    let mut core = Core::new()?;
-    let handle = core.handle();
 
     let tun = Rc::new(RefCell::new(PollEvented::new(tun, &handle)?));
     let sock = Rc::new(::tokio_core::net::UdpSocket::from_socket(sock, &handle)?);
@@ -57,7 +55,7 @@ pub fn run(config: Config) -> Result<()> {
     // If peer is set, we send packets to it. Otherwise we send to who ever
     // most recently send us an authenticated packet.
     let remote_addr: Rc<RefCell<Option<SocketAddr>>> = Rc::new(RefCell::new(None));
-    let remote_addr1 = if let Some(peer) = config.peer {
+    let remote_addr1 = if let Some(ref peer) = config.peer {
         *remote_addr.borrow_mut() = Some(peer.parse().map_err_io()?);
         None
     } else {
@@ -74,7 +72,7 @@ pub fn run(config: Config) -> Result<()> {
     };
 
     let tun_to_sock = TunToSock {
-        key: config.key,
+        key: config.key.clone(),
         sock: sock,
         tun: tun,
         remote_addr: remote_addr,
@@ -82,12 +80,24 @@ pub fn run(config: Config) -> Result<()> {
         buf_to_send: None,
     };
 
-    core.run(sock_to_tun.select(tun_to_sock).then(|r| {
+    Ok(Box::new(sock_to_tun.select(tun_to_sock).then(|r| {
         match r {
             Err((e, _)) => Err(e),
             Ok(_) => unreachable!(),
         }
-    }))
+    })))
+}
+
+/// Run titun with some configuration. Will not return unless an error happens.
+pub fn run(config: &Config) -> Result<()> {
+    let mut core = Core::new()?;
+    let handle = core.handle();
+
+    let titun_fut = titun_get_future(config, &handle)?;
+
+    systemd_notify_ready();
+
+    core.run(titun_fut)
 }
 
 struct SockToTun {

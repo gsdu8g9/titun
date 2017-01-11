@@ -63,7 +63,7 @@ fn inner() -> Result<()> {
             let config_file = m.value_of("config").unwrap();
             let config = read_file(config_file)?;
             let config = Config::parse(config.as_str())?;
-            run(config)?;
+            run(&config)?;
         }
         _ => {
             unreachable!();
