@@ -21,8 +21,9 @@
 //! is randomly generated. Nonce is appended to ciphertext.
 
 // TODO forward secrecy???
+
 use byteorder::{BigEndian, ByteOrder};
-use sodiumoxide::crypto::secretbox::{Key, Nonce, open, seal, NONCEBYTES};
+use sodiumoxide::crypto::secretbox::{Key, NONCEBYTES, Nonce, open, seal};
 use sodiumoxide::randombytes::randombytes_into;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -78,11 +79,11 @@ fn nonce_time_in_range(n: &Nonce, max_diff: u64) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     use sodiumoxide::crypto::secretbox::{gen_key, gen_nonce};
     use std::thread::sleep;
     use std::time::Duration;
+    use super::*;
     use test::Bencher;
 
     #[test]

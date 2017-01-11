@@ -16,13 +16,13 @@
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
 use config::Config;
-use crypto::{encrypt, decrypt};
+use crypto::{decrypt, encrypt};
 use futures::{Future, Poll};
 use map_err_io::MapErrIo;
 use script_runner::ScriptRunner;
 use sodiumoxide::crypto::secretbox::Key;
 use std::cell::RefCell;
-use std::io::{Error, Result, Read, Write};
+use std::io::{Error, Read, Result, Write};
 use std::net::SocketAddr;
 use std::rc::Rc;
 use systemd_notify::systemd_notify_ready;

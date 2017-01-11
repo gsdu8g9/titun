@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io::{Error, Result, ErrorKind};
+use std::io::{Error, ErrorKind, Result};
 
 pub trait MapErrIo<T> {
     fn map_err_io(self) -> Result<T>;

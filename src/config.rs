@@ -16,10 +16,10 @@
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
 use data_encoding::base64;
-use serde_yaml as yaml;
-use sodiumoxide::crypto::secretbox::{Key, gen_key, KEYBYTES};
-use std::io::{Error, ErrorKind};
 use map_err_io::MapErrIo;
+use serde_yaml as yaml;
+use sodiumoxide::crypto::secretbox::{KEYBYTES, Key, gen_key};
+use std::io::{Error, ErrorKind};
 
 #[derive(Serialize, Deserialize)]
 struct Config1 {

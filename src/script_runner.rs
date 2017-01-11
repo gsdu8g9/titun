@@ -16,7 +16,7 @@
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::ffi::OsStr;
-use std::io::{Result, Error, ErrorKind, Read, copy};
+use std::io::{Error, ErrorKind, Read, Result, copy};
 use std::process::{Command, Stdio};
 
 pub struct ScriptRunner {
@@ -25,13 +25,12 @@ pub struct ScriptRunner {
 
 impl ScriptRunner {
     pub fn new() -> ScriptRunner {
-        ScriptRunner {
-            c: Command::new("sh")
-        }
+        ScriptRunner { c: Command::new("sh") }
     }
 
     pub fn env<K, V>(mut self, key: K, val: V) -> ScriptRunner
-        where K: AsRef<OsStr>, V: AsRef<OsStr>,
+        where K: AsRef<OsStr>,
+              V: AsRef<OsStr>
     {
         self.c.env(key, val);
         self

@@ -37,10 +37,10 @@ extern crate titun;
 
 use futures::Future;
 use std::io::Result;
-use std::process::{Command, Child};
-use tokio_core::reactor::{Core, PollEvented};
+use std::process::{Child, Command};
 use titun::futures_more::repeat;
 use titun::tun::Tun;
+use tokio_core::reactor::{Core, PollEvented};
 
 fn up_and_ping(name: &str) -> Result<Child> {
     Command::new("ip").args(&["link", "set", name, "up"]).output()?;

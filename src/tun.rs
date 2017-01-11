@@ -15,14 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
-use mio::{Evented, Poll, Token, Ready, PollOpt};
+use mio::{Evented, Poll, PollOpt, Ready, Token};
 use mio::unix::EventedFd;
-use nix::fcntl::{self, fcntl, OFlag, FcntlArg};
-use nix::libc::{c_int, c_char, size_t};
+use nix::fcntl::{self, FcntlArg, OFlag, fcntl};
+use nix::libc::{c_char, c_int, size_t};
 use nix::unistd::{close, read, write};
 use std::convert::From;
 use std::ffi::{CStr, CString};
-use std::io::{Error, ErrorKind, Read, Write, Result};
+use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::mem;
 use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
 
