@@ -39,7 +39,7 @@ pub fn titun_get_future(config: &Config,
 
     let bind = config.bind.as_ref().map(|b| b.as_str()).unwrap_or("0.0.0.0:0");
     let sock = ::std::net::UdpSocket::bind(bind)?;
-    info!("Bind succeeded.");
+    info!("Bind to {}.", bind);
     sock.set_nonblocking(true)?;
 
     let tun = Tun::create(None)?;
@@ -106,7 +106,7 @@ pub fn run(config: &Config) -> Result<()> {
     let sigterm = core.run(sigterm)?;
 
     let signal_fut = sigint.select(sigterm).for_each(|s| {
-        info!("Received signal {}, exiting", s);
+        info!("Received signal {}, exiting.", s);
         Err("__err_signal__").map_err_io()
     });
 
@@ -191,7 +191,7 @@ impl Future for TunToSock {
                 } else {
                     self.log_dedup
                         .borrow_mut()
-                        .warn("got packet but don't know where to send it, discard");
+                        .warn("Got packet but don't know peer address.");
                 }
                 None
             } else {
@@ -239,7 +239,9 @@ impl LogDedup {
 
     fn clear(&mut self) {
         if self.previous.is_some() && self.times > 0 {
-            warn!("{}: repeated {} times", self.previous.unwrap(), self.times);
+            warn!("Message \"{}\": repeated {} times.",
+                  self.previous.unwrap(),
+                  self.times);
             self.times = 0;
         }
     }
