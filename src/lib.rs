@@ -32,6 +32,7 @@ extern crate sodiumoxide;
 extern crate test;
 #[macro_use]
 extern crate tokio_core;
+extern crate tokio_signal;
 
 pub mod config;
 pub mod crypto;

@@ -17,7 +17,7 @@
 
 use config::Config;
 use crypto::{decrypt, encrypt};
-use futures::{Future, Poll};
+use futures::{Future, Poll, Stream};
 use map_err_io::MapErrIo;
 use script_runner::ScriptRunner;
 use sodiumoxide::crypto::secretbox::Key;
@@ -28,6 +28,7 @@ use std::rc::Rc;
 use systemd_notify::systemd_notify_ready;
 use tokio_core::net::UdpSocket;
 use tokio_core::reactor::{Core, Handle, PollEvented};
+use tokio_signal;
 use tun::Tun;
 
 /// Return a future that can be run to run the tunnel.
@@ -99,9 +100,31 @@ pub fn run(config: &Config) -> Result<()> {
 
     let titun_fut = titun_get_future(config, &handle)?;
 
+    let sigint = tokio_signal::unix::Signal::new(tokio_signal::unix::SIGINT, &handle);
+    let sigint = core.run(sigint)?;
+    let sigterm = tokio_signal::unix::Signal::new(tokio_signal::unix::SIGTERM, &handle);
+    let sigterm = core.run(sigterm)?;
+
+    let signal_fut = sigint.select(sigterm).for_each(|s| {
+        info!("Received signal {}, exiting", s);
+        Err("__err_signal__").map_err_io()
+    });
+
     systemd_notify_ready();
 
-    core.run(titun_fut)
+    core.run(titun_fut.select(signal_fut).then(|r| {
+        match r {
+            Err((e, _)) => {
+                if let Some(e1) = e.get_ref() {
+                    if e1.description() == "__err_signal__" {
+                        return Ok(());
+                    }
+                }
+                Err(e)
+            }
+            Ok(_) => unreachable!(),
+        }
+    }))
 }
 
 struct SockToTun {

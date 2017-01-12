@@ -27,6 +27,7 @@ serde_derive = "0.8.21"
 serde_yaml = "0.5.0"
 sodiumoxide = "0.0.12"
 tokio-core = "0.1.2"
+tokio-signal = { git = "https://github.com/alexcrichton/tokio-signal", rev = "cf9398ef61bcf365a5c6fc6b160405cc84d9fdf2" }
 
 [lib]
 name = "titun"
