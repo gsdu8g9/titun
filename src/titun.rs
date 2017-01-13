@@ -138,9 +138,10 @@ struct SockToTun {
     buf_to_write: Option<Vec<u8>>,
 }
 
-// poll and try_nb! are somewhat like async/await...
+// poll and try_nb! are somewhat like async/await...only the function continues from the start,
+// not where it was interrupted.
 //
-// but MUCH easier to write than closures.
+// much easier to write than closures.
 
 impl Future for SockToTun {
     type Item = ();
@@ -158,7 +159,11 @@ impl Future for SockToTun {
             let (l, addr) = try_nb!(self.sock.recv_from(self.buf.as_mut()));
             if let Some(p) = decrypt(&self.key, self.buf[..l].as_ref()) {
                 if let Some(ref r) = self.remote_addr {
-                    *r.borrow_mut() = Some(addr);
+                    let mut rr = r.borrow_mut();
+                    if *rr != Some(addr) {
+                        *rr = Some(addr);
+                        info!("Peer address set to {}", addr);
+                    }
                 }
                 self.buf_to_write = Some(p);
             } else {
