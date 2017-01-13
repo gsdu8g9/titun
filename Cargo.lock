@@ -1,6 +1,6 @@
 [root]
 name = "titun"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "byteorder 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.19.3 (registry+https://github.com/rust-lang/crates.io-index)",
