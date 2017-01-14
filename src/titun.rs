@@ -50,8 +50,8 @@ pub fn titun_get_future(config: &Config,
         ScriptRunner::new().env("TUN", tun.get_name()).run(script.as_bytes())?;
     }
 
-    let tun = Rc::new(RefCell::new(PollEvented::new(tun, &handle)?));
-    let sock = Rc::new(::tokio_core::net::UdpSocket::from_socket(sock, &handle)?);
+    let tun = Rc::new(RefCell::new(PollEvented::new(tun, handle)?));
+    let sock = Rc::new(::tokio_core::net::UdpSocket::from_socket(sock, handle)?);
 
     // If peer is set, we send packets to it. Otherwise we send to who ever
     // most recently send us an authenticated packet.
