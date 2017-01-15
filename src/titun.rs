@@ -16,11 +16,10 @@
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
 use config::Config;
-use crypto::{decrypt, encrypt};
+use crypto::Crypto;
 use futures::{Future, Poll, Stream};
 use map_err_io::MapErrIo;
 use script_runner::ScriptRunner;
-use sodiumoxide::crypto::secretbox::Key;
 use std::cell::RefCell;
 use std::io::{Error, Read, Result, Write};
 use std::net::SocketAddr;
@@ -63,10 +62,11 @@ pub fn titun_get_future(config: &Config,
         Some(remote_addr.clone())
     };
 
+    let crypto = Rc::new(RefCell::new(Crypto::new(config.key.clone(), config.max_diff)));
     let log_dedup = Rc::new(RefCell::new(LogDedup::new()));
 
     let sock_to_tun = SockToTun {
-        key: config.key.clone(),
+        crypto: crypto.clone(),
         sock: sock.clone(),
         tun: tun.clone(),
         remote_addr: remote_addr1,
@@ -76,7 +76,7 @@ pub fn titun_get_future(config: &Config,
     };
 
     let tun_to_sock = TunToSock {
-        key: config.key.clone(),
+        crypto: crypto,
         sock: sock,
         tun: tun,
         remote_addr: remote_addr,
@@ -128,7 +128,7 @@ pub fn run(config: &Config) -> Result<()> {
 }
 
 struct SockToTun {
-    key: Key,
+    crypto: Rc<RefCell<Crypto>>,
     sock: Rc<UdpSocket>,
     // Don't actually need mutable reference, but make std::io::Write happy.
     tun: Rc<RefCell<PollEvented<Tun>>>,
@@ -157,7 +157,7 @@ impl Future for SockToTun {
             };
 
             let (l, addr) = try_nb!(self.sock.recv_from(self.buf.as_mut()));
-            if let Some(p) = decrypt(&self.key, self.buf[..l].as_ref()) {
+            if let Some(p) = self.crypto.borrow_mut().decrypt(self.buf[..l].as_ref()) {
                 if let Some(ref r) = self.remote_addr {
                     let mut rr = r.borrow_mut();
                     if *rr != Some(addr) {
@@ -174,7 +174,7 @@ impl Future for SockToTun {
 }
 
 struct TunToSock {
-    key: Key,
+    crypto: Rc<RefCell<Crypto>>,
     sock: Rc<UdpSocket>,
     // Don't actually need mutable reference, but make std::io::Read happy.
     tun: Rc<RefCell<PollEvented<Tun>>>,
@@ -204,7 +204,7 @@ impl Future for TunToSock {
             };
 
             let l = try_nb!(self.tun.borrow_mut().read(self.buf.as_mut()));
-            self.buf_to_send = Some(encrypt(&self.key, self.buf[..l].as_ref()));
+            self.buf_to_send = Some(self.crypto.borrow_mut().encrypt(self.buf[..l].as_ref()));
         }
     }
 }

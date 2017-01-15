@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
+use crypto::DEFAULT_MAX_DIFF;
 use data_encoding::base64;
 use map_err_io::MapErrIo;
 use serde_yaml as yaml;
@@ -28,6 +29,7 @@ struct Config1 {
     pub key: String,
     pub config_script: Option<String>,
     pub bufsize: Option<usize>,
+    pub max_diff: Option<u64>,
 }
 
 /// One of bind / peer must be set.
@@ -38,6 +40,7 @@ pub struct Config {
     pub key: Key,
     pub config_script: Option<String>,
     pub bufsize: usize,
+    pub max_diff: u64,
 }
 
 impl Config {
@@ -65,6 +68,7 @@ impl Config {
             key: key,
             config_script: c.config_script,
             bufsize: c.bufsize.unwrap_or(65536),
+            max_diff: c.max_diff.unwrap_or(DEFAULT_MAX_DIFF),
         })
     }
 }
@@ -100,6 +104,7 @@ mod tests {
             key: decode_key("Q3bSSKKonSsSt09ShImoD6JXf4z+r2ngQaCk/FFKwF8=").unwrap(),
             config_script: None,
             bufsize: 65536,
+            max_diff: ::crypto::DEFAULT_MAX_DIFF,
         };
         let c = Config::parse(r#"---
 peer: "127.0.0.1:3000"
