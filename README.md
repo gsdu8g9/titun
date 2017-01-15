@@ -127,7 +127,7 @@ and setup the server appropriately: iptable rules, sysctl, etc.
 
 ### MTU
 
-To avoid IP fragmentation, set the MTU of the tun device to path MTU minus 52 bytes. (20 bytes IP header, 8 bytes UDP header, 24 bytes nonce.).
+To avoid IP fragmentation, set the MTU of the tun device to path MTU minus 68 bytes. (20 bytes IP header, 8 bytes UDP header, 24 bytes nonce, 16 bytes auth tag).
 
 ### Systemd
 
