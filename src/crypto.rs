@@ -130,6 +130,7 @@ mod tests {
         let k = gen_key();
         let msg = [0u8; 1400];
         let mut cr = Crypto::new(k, DEFAULT_MAX_DIFF);
+        b.bytes = 1400;
         b.iter(|| cr.encrypt(&msg));
     }
 
@@ -139,6 +140,7 @@ mod tests {
         let k = gen_key();
         let msg = [0u8; 1400];
         let mut n = gen_nonce();
+        b.bytes = 1400;
         b.iter(|| {
             n.increment_le_inplace();
             seal(&msg, &n, &k)
