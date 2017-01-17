@@ -4,11 +4,11 @@
 
 TiTun (Titanium Tunnel) is a secure IP tunnel for GNU/Linux. It transmits packets via UDP, encrypted and authenticated with a pre-shared key. TiTun is stateless, NAT and proxy friendly, simple and easy to use.
 
-## WARNING
+## Is it Ready?
 
-TiTun is still in early stage. And I am not a crypto expert.
+I have been running TiTun on some of my servers since I published it on Github, and haven't encountered any problem. Do read about the [caveats](#caveats) of the crypto in TiTun.
 
-USE AT YOUR OWN RISK.
+If you need better performance and/or security, [wiregurad](https://www.wireguard.io/) seems very promising.
 
 ## Install
 
@@ -132,6 +132,10 @@ To avoid IP fragmentation, set the MTU of the tun device to path MTU minus 68 by
 ### Systemd
 
 Systemd is fully supported. An Example systemd service file is provided in the `contrib` dir. TiTun will notify systemd about startup completion with `systemd-notify`.
+
+## Performance
+
+I get 600Mbps+ throughput with `iperf3` between my Haswell Xeon-E3 desktop computer and a local virtual machine without much tweaking.
 
 ## Crypto
 
