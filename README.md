@@ -127,7 +127,7 @@ and setup the server appropriately: iptable rules, sysctl, etc.
 
 ### MTU
 
-To avoid IP fragmentation, set the MTU of the tun device to path MTU minus 68 bytes. (20 bytes IP header, 8 bytes UDP header, 24 bytes nonce, 16 bytes auth tag).
+To avoid IP fragmentation, set the MTU of the tun device to path MTU minus 68 bytes. (20 bytes IP header, 8 bytes UDP header, 16 bytes nonce, 16 bytes auth tag, 8 bytes timestamp).
 
 ### Systemd
 
@@ -139,7 +139,7 @@ I get 600Mbps+ throughput with `iperf3` between my Haswell Xeon-E3 desktop compu
 
 ## Crypto
 
-TiTun uses the awesome [libsodium](https://github.com/jedisct1/libsodium) library for encryption and authentication. Specifically, it uses `crypto_secretbox` with the pre-shared key and a time-based, random nonce. See `src/crypto.rs`.
+TiTun uses the awesome [libsodium](https://github.com/jedisct1/libsodium) library for encryption and authentication. Specifically, it uses `crypto_secretbox` with the pre-shared key and a random nonce. A timestamp is appended to packets before encryption to mitigate replay attack. See `src/crypto.rs`.
 
 ### Caveats
 

@@ -15,13 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
-//! Use time based nonce with `crypto_secretbox`.
-//!
-//! The first 8 bytes of nonce is number of nanoseconds since UNIX epoch, in big-endian. The rest
-//! is randomly generated. Nonce is appended to ciphertext.
-
 use byteorder::{BigEndian, ByteOrder};
-use sodiumoxide::crypto::secretbox::{Key, NONCEBYTES, Nonce, open, seal};
+use sodiumoxide::crypto::secretbox::{Key, Nonce, open, seal};
 use sodiumoxide::randombytes::randombytes_into;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -41,47 +36,50 @@ impl Crypto {
     }
 
     pub fn encrypt(&self, msg: &[u8]) -> Vec<u8> {
-        let nonce = get_nonce_with_timestamp();
-        let mut e = seal(msg, &nonce, &self.key);
-        e.extend_from_slice(nonce.as_ref());
+        let mut n = [0u8; 24];
+        randombytes_into(&mut n[8..]);
+        let nonce = Nonce(n);
+
+        let t = system_time_to_nanos_epoch(SystemTime::now());
+        let mut tt = [0u8; 8];
+        BigEndian::write_u64(&mut tt, t);
+
+        let mut m1 = msg.to_vec();
+        // Does this need a reallocation?
+        m1.extend_from_slice(&tt);
+
+        let mut e = seal(m1.as_slice(), &nonce, &self.key);
+        e.extend_from_slice(&n[8..]);
         e
     }
 
     pub fn decrypt(&self, msg: &[u8]) -> Option<Vec<u8>> {
-        if msg.len() < NONCEBYTES {
+        // 8 bytes timestamp, 16 bytes auth tag, 16 bytes random nonce.
+        if msg.len() < 40 {
             None
         } else {
-            let (c, n) = msg.split_at(msg.len() - NONCEBYTES);
-            let nonce = Nonce::from_slice(n).unwrap();
-            if nonce_time_in_range(&nonce, self.max_diff) {
-                open(c, &nonce, &self.key).ok()
-            } else {
-                None
-            }
+            let (c, n) = msg.split_at(msg.len() - 16);
+            let mut nonce = Nonce([0; 24]);
+            nonce.0[8..].copy_from_slice(n);
+            open(c, &nonce, &self.key).ok().and_then(|mut m| {
+                let len = m.len().checked_sub(8).unwrap();
+                let t = BigEndian::read_u64(&m[len..]);
+                let t0 = system_time_to_nanos_epoch(SystemTime::now());
+                let diff = if t > t0 { t - t0 } else { t0 - t };
+                if diff <= self.max_diff {
+                    m.truncate(len);
+                    Some(m)
+                } else {
+                    None
+                }
+            })
         }
     }
-}
-
-fn get_nonce_with_timestamp() -> Nonce {
-    let mut n = [0u8; 24];
-    let t1 = system_time_to_nanos_epoch(SystemTime::now());
-    BigEndian::write_u64(&mut n[..8], t1);
-    randombytes_into(&mut n[8..]);
-    Nonce(n)
 }
 
 fn system_time_to_nanos_epoch(t: SystemTime) -> u64 {
     let d = t.duration_since(UNIX_EPOCH).unwrap();
     (d * 1000000000).as_secs()
-}
-
-fn nonce_time_in_range(n: &Nonce, max_diff: u64) -> bool {
-    let m = BigEndian::read_u64(&n.0[..8]);
-    let m1 = system_time_to_nanos_epoch(SystemTime::now());
-
-    let d = if m1 > m { m1 - m } else { m - m1 };
-
-    d <= max_diff
 }
 
 #[cfg(test)]
@@ -100,11 +98,16 @@ mod tests {
         let c = cr.encrypt(&[2, 0, 1, 7]);
         let p = cr.decrypt(c.as_slice());
 
-        assert_eq!(p.unwrap().as_ref(), [2, 0, 1, 7]);
+        assert_eq!(p, Some(vec![2, 0, 1, 7]));
         assert_eq!(cr.decrypt(&[3, 4, 8, 1]), None);
 
         sleep(Duration::from_secs(2));
         assert!(cr.decrypt(c.as_slice()).is_none());
+
+        let c1 = cr.encrypt(&[]);
+        let p = cr.decrypt(c1.as_slice());
+
+        assert_eq!(p, Some(vec![]));
     }
 
     #[bench]
