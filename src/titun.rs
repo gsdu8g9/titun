@@ -41,7 +41,7 @@ pub fn titun_get_future(config: &Config,
     info!("Bind to {}.", bind);
     sock.set_nonblocking(true)?;
 
-    let tun = Tun::create(None)?;
+    let tun = Tun::create(config.dev_name.as_ref().map(|n| n.as_str()))?;
     info!("Tun device created: {}.", tun.get_name());
     tun.set_nonblocking(true)?;
 

@@ -30,6 +30,7 @@ struct Config1 {
     pub config_script: Option<String>,
     pub bufsize: Option<usize>,
     pub max_diff: Option<u64>,
+    pub dev_name: Option<String>,
 }
 
 /// One of bind / peer must be set.
@@ -41,6 +42,7 @@ pub struct Config {
     pub config_script: Option<String>,
     pub bufsize: usize,
     pub max_diff: u64,
+    pub dev_name: Option<String>,
 }
 
 impl Config {
@@ -69,6 +71,7 @@ impl Config {
             config_script: c.config_script,
             bufsize: c.bufsize.unwrap_or(65536),
             max_diff: c.max_diff.unwrap_or(DEFAULT_MAX_DIFF),
+            dev_name: c.dev_name,
         })
     }
 }
@@ -105,6 +108,7 @@ mod tests {
             config_script: None,
             bufsize: 65536,
             max_diff: ::crypto::DEFAULT_MAX_DIFF,
+            dev_name: None,
         };
         let c = Config::parse(r#"---
 peer: "127.0.0.1:3000"
