@@ -52,7 +52,8 @@ impl Config {
             for k in m.keys() {
                 let k = k.as_str().unwrap();
                 match k {
-                    "bind" | "peer" | "key" | "config_script" | "bufsize" => {}
+                    "bind" | "peer" | "key" | "config_script" | "bufsize" | "max_diff" |
+                    "dev_name" => {}
                     _ => warn!("unknown config {}", k),
                 }
             }
