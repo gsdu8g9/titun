@@ -32,3 +32,6 @@ tokio-signal = { git = "https://github.com/alexcrichton/tokio-signal", rev = "cf
 [lib]
 name = "titun"
 path = "src/lib.rs"
+
+[profile.release]
+lto = true
