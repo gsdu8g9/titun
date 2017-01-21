@@ -20,7 +20,7 @@ use sodiumoxide::crypto::secretbox::{Key, Nonce, open, seal};
 use sodiumoxide::randombytes::randombytes_into;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const DEFAULT_MAX_DIFF: u64 = 1000000000;
+pub const DEFAULT_MAX_DIFF: u64 = 1000;
 
 pub struct Crypto {
     key: Key,
@@ -40,7 +40,7 @@ impl Crypto {
         randombytes_into(&mut n[8..]);
         let nonce = Nonce(n);
 
-        let t = system_time_to_nanos_epoch(SystemTime::now());
+        let t = system_time_to_millis_epoch(SystemTime::now());
         let mut tt = [0u8; 8];
         BigEndian::write_u64(&mut tt, t);
 
@@ -64,7 +64,7 @@ impl Crypto {
             open(c, &nonce, &self.key).ok().and_then(|mut m| {
                 let len = m.len().checked_sub(8).unwrap();
                 let t = BigEndian::read_u64(&m[len..]);
-                let t0 = system_time_to_nanos_epoch(SystemTime::now());
+                let t0 = system_time_to_millis_epoch(SystemTime::now());
                 let diff = if t > t0 { t - t0 } else { t0 - t };
                 if diff <= self.max_diff {
                     m.truncate(len);
@@ -77,9 +77,9 @@ impl Crypto {
     }
 }
 
-fn system_time_to_nanos_epoch(t: SystemTime) -> u64 {
+fn system_time_to_millis_epoch(t: SystemTime) -> u64 {
     let d = t.duration_since(UNIX_EPOCH).unwrap();
-    (d * 1000000000).as_secs()
+    (d * 1000).as_secs()
 }
 
 #[cfg(test)]
