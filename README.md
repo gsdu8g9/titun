@@ -8,7 +8,7 @@ TiTun (Titanium Tunnel) is a secure IP tunnel for GNU/Linux. It transmits packet
 
 I have been running TiTun on some of my servers since I published it on Github, and haven't encountered any problem. Do read about the [caveats](#caveats) of the crypto in TiTun.
 
-If you need better performance and/or security, [wiregurad](https://www.wireguard.io/) seems very promising.
+If you need better performance and/or security, [wireguard](https://www.wireguard.io/) seems very promising.
 
 ## Install
 
