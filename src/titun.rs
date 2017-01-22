@@ -38,9 +38,8 @@ pub fn titun_get_future(config: &Config,
     assert!(config.peer.is_some() || config.bind.is_some());
 
     let bind = config.bind.unwrap_or_else(|| "0.0.0.0:0".parse().unwrap());
-    let sock = ::std::net::UdpSocket::bind(bind)?;
-    info!("Bind to {}.", bind);
-    sock.set_nonblocking(true)?;
+    let sock = UdpSocket::bind(&bind, handle)?;
+    info!("Bind to {}.", sock.local_addr()?);
 
     let tun = Tun::create(config.dev_name.as_ref().map(|n| n.as_str()))?;
     info!("Tun device created: {}.", tun.get_name());
@@ -51,7 +50,7 @@ pub fn titun_get_future(config: &Config,
     }
 
     let tun = Rc::new(RefCell::new(PollEvented::new(tun, handle)?));
-    let sock = Rc::new(::tokio_core::net::UdpSocket::from_socket(sock, handle)?);
+    let sock = Rc::new(sock);
 
     // If peer is set, we send packets to it. Otherwise we send to who ever
     // most recently send us an authenticated packet.
