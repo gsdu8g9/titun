@@ -36,7 +36,6 @@ extern crate tokio_signal;
 
 pub mod config;
 pub mod crypto;
-pub mod futures_more;
 pub mod map_err_io;
 pub mod script_runner;
 pub mod systemd_notify;

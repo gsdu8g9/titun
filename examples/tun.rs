@@ -31,16 +31,11 @@
 // Got packet: 84 bytes
 // ...
 
-extern crate futures;
-extern crate tokio_core;
 extern crate titun;
 
-use futures::Future;
 use std::io::Result;
 use std::process::{Child, Command};
-use titun::futures_more::repeat;
 use titun::tun::Tun;
-use tokio_core::reactor::{Core, PollEvented};
 
 fn up_and_ping(name: &str) -> Result<Child> {
     Command::new("ip").args(&["link", "set", name, "up"]).output()?;
@@ -53,25 +48,15 @@ fn up_and_ping(name: &str) -> Result<Child> {
 
 fn inner() -> Result<()> {
     let t = Tun::create(Some("tun-test-0"))?;
-    t.set_nonblocking(true)?;
 
     up_and_ping(t.get_name())?;
 
-    let mut core = Core::new()?;
-    let handle = core.handle();
-
-    let tun = PollEvented::new(t, &handle)?;
     let mut buf = [0u8; 2048];
 
-    let fut = repeat(|buf| {
-                         tokio_core::io::read(&tun, buf).map(|(_, buf, l)| {
-                             println!("read {} bytes", l);
-                             buf
-                         })
-                     },
-                     buf.as_mut());
-
-    core.run(fut)
+    loop {
+        let l = t.read(&mut buf)?;
+        println!("Got packet: {} bytes", l);
+    }
 }
 
 fn main() {
