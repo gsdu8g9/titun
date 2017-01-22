@@ -37,7 +37,7 @@ pub fn titun_get_future(config: &Config,
                         -> Result<Box<Future<Item = (), Error = TiTunError>>> {
     assert!(config.peer.is_some() || config.bind.is_some());
 
-    let bind = config.bind.as_ref().map(|b| b.as_str()).unwrap_or("0.0.0.0:0");
+    let bind = config.bind.unwrap_or_else(|| "0.0.0.0:0".parse().unwrap());
     let sock = ::std::net::UdpSocket::bind(bind)?;
     info!("Bind to {}.", bind);
     sock.set_nonblocking(true)?;
@@ -56,8 +56,8 @@ pub fn titun_get_future(config: &Config,
     // If peer is set, we send packets to it. Otherwise we send to who ever
     // most recently send us an authenticated packet.
     let remote_addr: Rc<RefCell<Option<SocketAddr>>> = Rc::new(RefCell::new(None));
-    let remote_addr1 = if let Some(ref peer) = config.peer {
-        *remote_addr.borrow_mut() = Some(peer.parse()?);
+    let remote_addr1 = if config.peer.is_some() {
+        *remote_addr.borrow_mut() = config.peer;
         None
     } else {
         Some(remote_addr.clone())

@@ -21,6 +21,7 @@ use error::Result;
 use serde_yaml as yaml;
 use sodiumoxide::crypto::secretbox::{KEYBYTES, Key, gen_key};
 use std::convert::From;
+use std::net::SocketAddr;
 
 #[derive(Serialize, Deserialize)]
 struct Config1 {
@@ -36,8 +37,8 @@ struct Config1 {
 /// One of bind / peer must be set.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
-    pub bind: Option<String>,
-    pub peer: Option<String>,
+    pub bind: Option<SocketAddr>,
+    pub peer: Option<SocketAddr>,
     pub key: Key,
     pub config_script: Option<String>,
     pub bufsize: usize,
@@ -59,13 +60,26 @@ impl Config {
             }
         }
         let c: Config1 = yaml::from_value(v)?;
+
         let key = decode_key(&c.key).ok_or_else(|| "Config: Failed to decode key")?;
+
         if c.peer.is_none() && c.bind.is_none() {
             return Err(From::from("Config: one of `bind` or `peer` must be specified"));
         }
+        let peer = if let Some(p) = c.peer {
+            Some(p.parse()?)
+        } else {
+            None
+        };
+        let bind = if let Some(b) = c.bind {
+            Some(b.parse()?)
+        } else {
+            None
+        };
+
         Ok(Config {
-            bind: c.bind,
-            peer: c.peer,
+            bind: bind,
+            peer: peer,
             key: key,
             config_script: c.config_script,
             bufsize: c.bufsize.unwrap_or(65536),
@@ -102,7 +116,7 @@ mod tests {
     fn parse_config() {
         let c0 = Config {
             bind: None,
-            peer: Some("127.0.0.1:3000".to_string()),
+            peer: Some("127.0.0.1:3000".parse().unwrap()),
             key: decode_key("Q3bSSKKonSsSt09ShImoD6JXf4z+r2ngQaCk/FFKwF8=").unwrap(),
             config_script: None,
             bufsize: 65536,
