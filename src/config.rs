@@ -17,10 +17,10 @@
 
 use crypto::DEFAULT_MAX_DIFF;
 use data_encoding::base64;
-use map_err_io::MapErrIo;
+use error::Result;
 use serde_yaml as yaml;
 use sodiumoxide::crypto::secretbox::{KEYBYTES, Key, gen_key};
-use std::io::{Error, ErrorKind};
+use std::convert::From;
 
 #[derive(Serialize, Deserialize)]
 struct Config1 {
@@ -46,8 +46,8 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn parse(s: &str) -> Result<Config, Error> {
-        let v: yaml::Value = yaml::from_str(s).map_err_io()?;
+    pub fn parse(s: &str) -> Result<Config> {
+        let v: yaml::Value = yaml::from_str(s)?;
         if let yaml::Value::Mapping(ref m) = v {
             for k in m.keys() {
                 let k = k.as_str().unwrap();
@@ -58,12 +58,10 @@ impl Config {
                 }
             }
         }
-        let c: Config1 = yaml::from_value(v).map_err_io()?;
-        let key = decode_key(&c.key)
-            .ok_or_else(|| Error::new(ErrorKind::Other, "Config: Failed to decode key"))?;
+        let c: Config1 = yaml::from_value(v)?;
+        let key = decode_key(&c.key).ok_or_else(|| "Config: Failed to decode key")?;
         if c.peer.is_none() && c.bind.is_none() {
-            return Err(Error::new(ErrorKind::Other,
-                                  "Config: one of `bind` or `peer` must be specified"));
+            return Err(From::from("Config: one of `bind` or `peer` must be specified"));
         }
         Ok(Config {
             bind: c.bind,

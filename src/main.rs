@@ -22,9 +22,9 @@ extern crate titun;
 
 use clap::{App, AppSettings, SubCommand};
 use std::fs::File;
-use std::io::{Read, Result};
+use std::io::Read;
 use titun::config::{Config, genkey_base64};
-use titun::map_err_io::MapErrIo;
+use titun::error::Result;
 use titun::titun::run;
 
 fn read_file(path: &str) -> Result<String> {
@@ -38,7 +38,7 @@ fn inner() -> Result<()> {
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var("RUST_LOG", "info");
     }
-    env_logger::init().map_err_io()?;
+    env_logger::init()?;
     sodiumoxide::init();
 
     let sub_tun = SubCommand::with_name("tun")

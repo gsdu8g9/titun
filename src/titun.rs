@@ -17,11 +17,12 @@
 
 use config::Config;
 use crypto::Crypto;
+use error::{Result, TiTunError};
 use futures::{Future, Poll, Stream};
-use map_err_io::MapErrIo;
 use script_runner::ScriptRunner;
 use std::cell::RefCell;
-use std::io::{Error, Read, Result, Write};
+use std::convert::From;
+use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::rc::Rc;
 use systemd_notify::systemd_notify_ready;
@@ -33,7 +34,7 @@ use tun::Tun;
 /// Return a future that can be run to run the tunnel.
 pub fn titun_get_future(config: &Config,
                         handle: &Handle)
-                        -> Result<Box<Future<Item = (), Error = Error>>> {
+                        -> Result<Box<Future<Item = (), Error = TiTunError>>> {
     assert!(config.peer.is_some() || config.bind.is_some());
 
     let bind = config.bind.as_ref().map(|b| b.as_str()).unwrap_or("0.0.0.0:0");
@@ -56,7 +57,7 @@ pub fn titun_get_future(config: &Config,
     // most recently send us an authenticated packet.
     let remote_addr: Rc<RefCell<Option<SocketAddr>>> = Rc::new(RefCell::new(None));
     let remote_addr1 = if let Some(ref peer) = config.peer {
-        *remote_addr.borrow_mut() = Some(peer.parse().map_err_io()?);
+        *remote_addr.borrow_mut() = Some(peer.parse()?);
         None
     } else {
         Some(remote_addr.clone())
@@ -105,23 +106,17 @@ pub fn run(config: &Config) -> Result<()> {
     let sigterm = tokio_signal::unix::Signal::new(tokio_signal::unix::SIGTERM, &handle);
     let sigterm = core.run(sigterm)?;
 
-    let signal_fut = sigint.select(sigterm).for_each(|s| {
+    let signal_fut = sigint.select(sigterm).map_err(From::from).for_each(|s| {
         info!("Received signal {}, exiting.", s);
-        Err("__err_signal__").map_err_io()
+        Err(TiTunError::GracefulExit)
     });
 
     systemd_notify_ready();
 
     core.run(titun_fut.select(signal_fut).then(|r| {
         match r {
-            Err((e, _)) => {
-                if let Some(e1) = e.get_ref() {
-                    if e1.description() == "__err_signal__" {
-                        return Ok(());
-                    }
-                }
-                Err(e)
-            }
+            Err((TiTunError::GracefulExit, _)) => Ok(()),
+            Err((e, _)) => Err(e),
             Ok(_) => unreachable!(),
         }
     }))
@@ -145,9 +140,9 @@ struct SockToTun {
 
 impl Future for SockToTun {
     type Item = ();
-    type Error = Error;
+    type Error = TiTunError;
 
-    fn poll(&mut self) -> Poll<(), Error> {
+    fn poll(&mut self) -> Poll<(), TiTunError> {
         loop {
             self.buf_to_write = if let Some(ref b) = self.buf_to_write {
                 try_nb!(self.tun.borrow_mut().write(b.as_slice()));
@@ -186,9 +181,9 @@ struct TunToSock {
 
 impl Future for TunToSock {
     type Item = ();
-    type Error = Error;
+    type Error = TiTunError;
 
-    fn poll(&mut self) -> Poll<(), Error> {
+    fn poll(&mut self) -> Poll<(), TiTunError> {
         loop {
             self.buf_to_send = if let Some(ref b) = self.buf_to_send {
                 if let Some(ref a) = *self.remote_addr.borrow() {
