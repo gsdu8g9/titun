@@ -25,7 +25,7 @@ nix = "0.7.0"
 serde = "0.8.21"
 serde_derive = "0.8.21"
 serde_yaml = "0.5.0"
-sodiumoxide = { git = "https://github.com/dnaq/sodiumoxide", rev = "12d49e8ed1b53821465f24312695376eb86c89d2" }
+sodiumoxide = "0.0.14"
 tokio-core = "0.1.2"
 tokio-signal = "0.1"
 
