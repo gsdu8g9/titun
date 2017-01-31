@@ -203,7 +203,7 @@ impl Future for TunToSock {
     }
 }
 
-pub struct LogDedup {
+struct LogDedup {
     previous: Option<&'static str>,
     times: u32,
 }

@@ -29,20 +29,20 @@ pub enum TiTunError {
 
 impl Display for TiTunError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            &TiTunError::IoErr(ref e) => write!(f, "IO Error: {}", e),
-            &TiTunError::OtherErr(ref e) => e.fmt(f),
-            &TiTunError::GracefulExit => write!(f, "GracefulExit"),
+        match *self {
+            TiTunError::IoErr(ref e) => write!(f, "IO Error: {}", e),
+            TiTunError::OtherErr(ref e) => e.fmt(f),
+            TiTunError::GracefulExit => write!(f, "GracefulExit"),
         }
     }
 }
 
 impl Error for TiTunError {
     fn description(&self) -> &str {
-        match self {
-            &TiTunError::IoErr(ref e) => e.description(),
-            &TiTunError::OtherErr(ref e) => e.as_str(),
-            &TiTunError::GracefulExit => "GracefulExit",
+        match *self {
+            TiTunError::IoErr(ref e) => e.description(),
+            TiTunError::OtherErr(ref e) => e.as_str(),
+            TiTunError::GracefulExit => "GracefulExit",
         }
     }
 }
