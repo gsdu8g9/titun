@@ -47,7 +47,7 @@ fn inner() -> Result<()> {
     let sub_genkey = SubCommand::with_name("genkey").display_order(2);
 
     let app = App::new("titun")
-        .version("0.0.2")
+        .version("0.0.3")
         .about("A simple secure ip tunnel for linux.")
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(sub_tun)
