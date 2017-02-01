@@ -2,25 +2,21 @@
 
 [![Build Status](https://travis-ci.org/sopium/titun.svg?branch=master)](https://travis-ci.org/sopium/titun)
 
-TiTun (Titanium Tunnel) is a secure IP tunnel for GNU/Linux. It transmits packets via UDP, encrypted and authenticated with a pre-shared key. TiTun is stateless, NAT and proxy friendly, simple and easy to use.
+TiTun (Titanium Tunnel) is a secure IP tunnel for GNU/Linux. It transmits packets via UDP, encrypted and authenticated with a pre-shared key. TiTun aims to be NAT and proxy friendly, simple and easy to use.
 
-## Is it Ready?
+## Status
 
-I have been running TiTun on some of my servers since I published it on Github, and haven't encountered any problem. Do read about the [caveats](#caveats) of the crypto in TiTun.
+I am comfortably running TiTun on my servers. Do read about the [caveats](#caveats) of the protocol.
 
 If you need better performance and/or security, [wireguard](https://www.wireguard.io/) seems very promising.
 
 ## Install
 
-You can either build TiTun yourself or download prebuilt binary from [GitHub releases](https://github.com/sopium/titun/releases).
+You can either build TiTun from source or download binarys from [GitHub releases](https://github.com/sopium/titun/releases).
 
-To build TiTun you need the rust toolchain, which can be installed with [rustup](https://github.com/rust-lang-nursery/rustup.rs). You also need libsodium. On recent Debian/Ubuntu systems, you should be able to install it with:
+To build TiTun you need the rust toolchain, which can be installed with [rustup](https://github.com/rust-lang-nursery/rustup.rs). You also need libsodium. It may be available from your distro's package manager. Or you can build it yourself.
 
-```
-# apt install libsodium-dev
-```
-
-Then run
+Get the code and run
 
 ```
 $ cargo build --release
@@ -32,98 +28,71 @@ The binarys at GitHub releases are statically linked. They should work on any re
 
 ## Usage
 
-You are expected to have some networking knowledge and system administration skills to use TiTun.
+TiTun can be used to establish a secure IP tunnel between two linux hosts, provided that one of them has a UDP port reachable from the other.
 
-### Generate key
+### Key generation
 
-First you need to generate a key. Run
+Run
+
 ```
 $ titun genkey
 ```
 
-It should print something like:
+to generate a key for TiTun. The two hosts must use a same key.
+
+A TiTun key looks like:
+
 ```yaml
 key: "T7DEdB4b0nK6F6hE0/+8SzepNiJ+sFz1AXMYagvUI="
 ```
 
-(*WARNING: GENERATE YOUR OWN. DO NOT USE THIS! ACTUALLY THIS IS NOT A VALID KEY.*)
+i.e. 32 random bytes encoded in base64.
 
-### Try it
+### Configuration
 
-Now write config files for the two hosts. One of them must have a UDP port reachable from the other. This host we will refer to as the server, and the other as the client.
+TiTun config files are written in [yaml](http://yaml.org/). The following configuration options are supported:
 
-Config files are simple yaml files. Start with something like this:
+* `bind`: Address and port to bind to.
+* `peer`: Peer address and port.
+* `key`: Encryption/authentication key.
+* `config_script`: A shell script that will be run after the tun device is created. Use this to bring the device up and set ip address, MTU, and add routes, etc.
+* `bufsize`: Size of buffer when reading from tun device or receiving from socket.
+* `max_diff`: Maximum timestamp differences allowed, in milliseconds.
+* `dev_name`: Name of tun device.
 
-Server config server.yaml:
+At minimum, {bind or peer} and key must be specified.
+
+Here is an example pair of config files:
+
+Server:
+
 ```yaml
-bind: "0.0.0.0:8733"
+bind: "1.2.3.4:5678"
 key: "T7DEdB4b0nK6F6hE0/+8SzepNiJ+sFz1AXMYagvUI="
 config_script: |
-   ip link set $TUN up
-   ip addr add 192.168.43.1 peer 192.168.43.2 dev $TUN
+  ip link set $TUN up mtu 1280
+  ip addr add 192.168.9.1 peer 192.168.9.2 dev $TUN
 ```
 
-Client config client.yaml: (Substitute `[server-address]` with the actual address of the server.)
-```yaml
-peer: "[server-address]:8733"
-key: "T7DEdB4b0nK6F6hE0/+8SzepNiJ+sFz1AXMYagMzvUI="
-config_script: |
-   ip link set $TUN up
-   ip addr add 192.168.43.2 peer 192.168.43.1 dev $TUN
-```
-
-Run
-```
-# titun tun -c server.yml
-```
-on the server, and run
-```
-# titun tun -c client.yml
-```
-
-on the client (both as root). You should be able to ping 192.168.43.1 from the client, then able to ping 192.168.43.2 from the server.
-
-It's worth nothing that the server/client distinction is not inherent to TiTun. You can configure both as “server”, bind to a fixed port.
-
-For a full list of configuration options available, see `src/config.rs`.
-
-### Configure the tunnel device with `config_script`
-
-TiTun just transmit packets between the two tun devices. How to use the tun devices is completely up to you. The `config_script` entry is a shell script which will be run after the tunnel device is created. The environment variable `TUN` is set to the name of the tun device.
-
-For example, to connect two networks together, you can use:
-
-server.yml:
-```yaml
-bind: ...
-key: ...
-config_script: |
-   ip link set $TUN up
-   ip addr add 192.168.43.1 peer 192.168.43.2 dev $TUN
-   ip route add 192.168.45.0/24 via 192.168.43.2 dev $TUN
-```
-
-client.yml:
-```yaml
-peer: ...
-key: ...
-config_script: |
-   ip link set $TUN up
-   ip addr add 192.168.43.2 peer 192.168.43.1 dev $TUN
-   ip route add 192.168.44.0/24 via 192.168.43.1 dev $TUN
-```
-
-To route client internet traffic through the server, use something like:
+Client:
 
 ```yaml
+peer: "1.2.3.4:5678"
+key: "T7DEdB4b0nK6F6hE0/+8SzepNiJ+sFz1AXMYagvUI="
 config_script: |
-   ip link set $TUN up
-   ip addr add 10.177.33.7 peer 10.177.33.1 dev $TUN
-   ip route add 0.0.0.0/1 dev $TUN
-   ip route add 128.0.0.0/1 dev $TUN
+  ip link set $TUN up mtu 1280
+  ip addr add 192.168.9.2 peer 192.168.9.1 dev $TUN
 ```
 
-and setup the server appropriately: iptable rules, sysctl, etc.
+### Command Line Interface
+
+It's just:
+
+```
+# titun tun -c config.yml
+```
+
+The `RUST_LOG` environment variable can be used to control logging. See [env-logger](https://doc.rust-lang.org/log/env_logger/).
 
 ### MTU
 
@@ -131,15 +100,17 @@ To avoid IP fragmentation, set the MTU of the tun device to path MTU minus 68 by
 
 ### Systemd
 
-Systemd is fully supported. An Example systemd service file is provided in the `contrib` dir. TiTun will notify systemd about startup completion with `systemd-notify`.
+Systemd is fully supported. An example systemd service file is provided in the `contrib` dir. TiTun will notify systemd about startup completion with `systemd-notify`.
 
-## Performance
+To use that service file, copy it to `/etc/systemd/system/`, install `titun` at `/usr/local/bin`, mkdir `/etc/titun/`, and put config files there, e.g. `/etc/titun/tun0.yml`, then
 
-I get 600Mbps+ throughput with `iperf3` between my Haswell Xeon-E3 desktop computer and a local virtual machine without much tweaking.
+```
+# systemctl start titun@tun0
+```
 
-## Crypto
+## Protocol
 
-TiTun uses the awesome [libsodium](https://github.com/jedisct1/libsodium) library for encryption and authentication. Specifically, it uses `crypto_secretbox` with the pre-shared key and a random nonce. A timestamp is appended to packets before encryption to mitigate replay attack. See `src/crypto.rs`.
+TiTun uses the awesome [libsodium](https://github.com/jedisct1/libsodium) library for encryption and authentication. Specifically, it uses `crypto_secretbox` with the pre-shared key and random nonces. A timestamp is appended to packets before encryption to mitigate replay attack. See `src/crypto.rs`.
 
 ### Caveats
 
@@ -147,12 +118,23 @@ TiTun uses the awesome [libsodium](https://github.com/jedisct1/libsodium) librar
 
 2. No forward secrecy.
 
+## Performance
+
+I get 700Mbps+ throughput with `iperf3` between my Haswell Xeon-E3 desktop computer and a local virtual machine.
+
+## Contributing
+
+I built TiTun primarily for my personal usage, (and to try and learn rust), so it is very limiting. If someone can write a good cross platform library for tun device creation/management, I would happily port TiTun over to make it cross platform.
+
+Issues and pull requests are welcome.
+
 ## Acknowledgment
 
-TiTun is heavily influenced by [fastd](https://projects.universe-factory.net/projects/fastd/wiki). The major problem I have with fastd is that it doesn't seem to work very reliability when there is NAT.
+TiTun is heavily influenced by [fastd](https://projects.universe-factory.net/projects/fastd/wiki). Fastd doesn't work very reliability when there is NAT though, probably becuase it lacks a keep-alive mechanism?
 
-## COPYING
+## License: GPL v3+
 
+```
 Copyright 2017 Sopium
 
 TiTun is free software: you can redistribute it and/or modify
@@ -167,3 +149,4 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
+```
