@@ -34,11 +34,11 @@ tar xf libsodium-1.0.11.tar.gz
 cd libsodium-1.0.11
 CC=musl-gcc ./configure --disable-shared
 make -j8
-cd ..
 
 export SODIUM_LIB_DIR=$PWD/src/libsodium/.libs/
 export SODIUM_STATIC=1
 
+cd ..
 cargo build --release --target x86_64-unknown-linux-musl
 mkdir titun
 cp target/x86_64-unknown-linux-musl/release/titun titun/titun
