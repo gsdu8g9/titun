@@ -84,10 +84,10 @@ fn system_time_to_millis_epoch(t: SystemTime) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use sodiumoxide::crypto::secretbox::gen_key;
     use std::thread::sleep;
     use std::time::Duration;
-    use super::*;
 
     #[test]
     fn encryption_and_decryption() {

@@ -85,11 +85,9 @@ pub fn titun_get_future(config: &Config,
         buf_to_send: None,
     };
 
-    Ok(Box::new(sock_to_tun.select(tun_to_sock).then(|r| {
-        match r {
-            Err((e, _)) => Err(e),
-            Ok(_) => unreachable!(),
-        }
+    Ok(Box::new(sock_to_tun.select(tun_to_sock).then(|r| match r {
+        Err((e, _)) => Err(e),
+        Ok(_) => unreachable!(),
     })))
 }
 
@@ -112,12 +110,10 @@ pub fn run(config: &Config) -> Result<()> {
 
     systemd_notify_ready();
 
-    core.run(titun_fut.select(signal_fut).then(|r| {
-        match r {
-            Err((TiTunError::GracefulExit, _)) => Ok(()),
-            Err((e, _)) => Err(e),
-            Ok(_) => unreachable!(),
-        }
+    core.run(titun_fut.select(signal_fut).then(|r| match r {
+        Err((TiTunError::GracefulExit, _)) => Ok(()),
+        Err((e, _)) => Err(e),
+        Ok(_) => unreachable!(),
     }))
 }
 
