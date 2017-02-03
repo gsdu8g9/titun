@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
-#![feature(test)]
-
 extern crate byteorder;
 extern crate data_encoding;
 extern crate futures;
@@ -28,7 +26,6 @@ extern crate nix;
 extern crate serde_derive;
 extern crate serde_yaml;
 extern crate sodiumoxide;
-extern crate test;
 #[macro_use]
 extern crate tokio_core;
 extern crate tokio_signal;

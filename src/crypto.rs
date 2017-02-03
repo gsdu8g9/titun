@@ -84,11 +84,10 @@ fn system_time_to_millis_epoch(t: SystemTime) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use sodiumoxide::crypto::secretbox::{gen_key, gen_nonce};
+    use sodiumoxide::crypto::secretbox::gen_key;
     use std::thread::sleep;
     use std::time::Duration;
     use super::*;
-    use test::Bencher;
 
     #[test]
     fn encryption_and_decryption() {
@@ -108,28 +107,5 @@ mod tests {
         let p = cr.decrypt(c1.as_slice());
 
         assert_eq!(p, Some(vec![]));
-    }
-
-    #[bench]
-    fn bench_encryption(b: &mut Bencher) {
-        ::sodiumoxide::init();
-        let k = gen_key();
-        let msg = [0u8; 1400];
-        let cr = Crypto::new(k, DEFAULT_MAX_DIFF);
-        b.bytes = 1400;
-        b.iter(|| cr.encrypt(&msg));
-    }
-
-    #[bench]
-    fn bench_ecryption_bare(b: &mut Bencher) {
-        ::sodiumoxide::init();
-        let k = gen_key();
-        let msg = [0u8; 1400];
-        let mut n = gen_nonce();
-        b.bytes = 1400;
-        b.iter(|| {
-            n.increment_le_inplace();
-            seal(&msg, &n, &k)
-        });
     }
 }
