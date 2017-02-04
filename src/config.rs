@@ -21,7 +21,7 @@ use error::Result;
 use serde_yaml as yaml;
 use sodiumoxide::crypto::secretbox::{KEYBYTES, Key, gen_key};
 use std::convert::From;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 
 #[derive(Serialize, Deserialize)]
 struct Config1 {
@@ -46,6 +46,13 @@ pub struct Config {
     pub dev_name: Option<String>,
 }
 
+fn to_socket_addr(s: &str) -> Result<SocketAddr> {
+    for a in s.to_socket_addrs()? {
+        return Ok(a);
+    }
+    return Err(From::from("cannot resolve host"));
+}
+
 impl Config {
     pub fn parse(s: &str) -> Result<Config> {
         let v: yaml::Value = yaml::from_str(s)?;
@@ -67,12 +74,12 @@ impl Config {
             return Err(From::from("Config: one of `bind` or `peer` must be specified"));
         }
         let peer = if let Some(p) = c.peer {
-            Some(p.parse()?)
+            Some(to_socket_addr(&p)?)
         } else {
             None
         };
         let bind = if let Some(b) = c.bind {
-            Some(b.parse()?)
+            Some(to_socket_addr(&b)?)
         } else {
             None
         };
