@@ -15,8 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
+use std::env::var_os;
 use std::process::Command;
 
-pub fn systemd_notify_ready() {
-    let _ = Command::new("systemd-notify").arg("--ready").status();
+pub fn notify_ready() {
+    if var_os("NOTIFY_SOCKET").is_some() {
+        let _ = Command::new("systemd-notify").arg("--ready").status();
+    }
 }

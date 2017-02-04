@@ -25,7 +25,7 @@ use std::convert::From;
 use std::io::{Read, Write};
 use std::net::SocketAddr;
 use std::rc::Rc;
-use systemd_notify::systemd_notify_ready;
+use systemd::notify_ready;
 use tokio_core::net::UdpSocket;
 use tokio_core::reactor::{Core, Handle, PollEvented};
 use tokio_signal;
@@ -108,7 +108,7 @@ pub fn run(config: &Config) -> Result<()> {
         Err(TiTunError::GracefulExit)
     });
 
-    systemd_notify_ready();
+    notify_ready();
 
     core.run(titun_fut.select(signal_fut).then(|r| match r {
         Err((TiTunError::GracefulExit, _)) => Ok(()),

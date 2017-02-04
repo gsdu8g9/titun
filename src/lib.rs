@@ -34,6 +34,6 @@ pub mod config;
 pub mod crypto;
 pub mod error;
 mod script_runner;
-mod systemd_notify;
+mod systemd;
 pub mod titun;
 pub mod tun;
