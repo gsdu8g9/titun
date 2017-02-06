@@ -52,7 +52,7 @@ fn to_socket_addr(s: &str) -> Result<SocketAddr> {
     for a in s.to_socket_addrs()? {
         return Ok(a);
     }
-    return Err(From::from("cannot resolve host"));
+    Err(From::from("cannot resolve host"))
 }
 
 impl Config {
