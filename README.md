@@ -2,11 +2,11 @@
 
 [![Build Status](https://travis-ci.org/sopium/titun.svg?branch=master)](https://travis-ci.org/sopium/titun)
 
-TiTun (Titanium Tunnel) is a secure IP tunnel for GNU/Linux. It transmits packets via UDP, encrypted and authenticated with a pre-shared key. TiTun aims to be NAT and proxy friendly, simple and easy to use.
+TiTun (Titanium Tunnel) is a simple, fast and easy to use IP tunnel for linux. It transmits packets via UDP, encrypted and authenticated with a pre-shared key. A distinguishing feature of TiTun is NAT and proxy friendliness: most other VPN software I tried have problem working with my ISP where UDP NAT mapping frequently changes.
 
 ## Status
 
-I am comfortably running TiTun on my servers. Do read about the [caveats](#caveats) of the protocol.
+The current protocol is [not very sound](#caveats), and TiTun has not been audited/reviewed. It should work well as a obfuscation layer though.
 
 If you need better performance and/or security, [wireguard](https://www.wireguard.io/) seems very promising.
 
@@ -70,7 +70,7 @@ Server:
 ```yaml
 bind: "1.2.3.4:5678"
 key: "T7DEdB4b0nK6F6hE0/+8SzepNiJ+sFz1AXMYagvUI="
-config_script: |
+on_up: |
   ip link set $TUN up mtu 1280
   ip addr add 192.168.9.1 peer 192.168.9.2 dev $TUN
 ```
@@ -80,7 +80,7 @@ Client:
 ```yaml
 peer: "1.2.3.4:5678"
 key: "T7DEdB4b0nK6F6hE0/+8SzepNiJ+sFz1AXMYagvUI="
-config_script: |
+on_up: |
   ip link set $TUN up mtu 1280
   ip addr add 192.168.9.2 peer 192.168.9.1 dev $TUN
 ```
