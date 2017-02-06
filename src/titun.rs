@@ -27,29 +27,31 @@ use std::net::SocketAddr;
 use std::rc::Rc;
 use systemd::notify_ready;
 use tokio_core::net::UdpSocket;
-use tokio_core::reactor::{Core, Handle, PollEvented};
+use tokio_core::reactor::{Core, PollEvented};
 use tokio_signal;
 use tun::Tun;
 
-/// Return a future that can be run to run the tunnel.
-pub fn titun_get_future(config: &Config,
-                        handle: &Handle)
-                        -> Result<Box<Future<Item = (), Error = TiTunError>>> {
+/// Run titun with some configuration. Will not return unless an error happens.
+pub fn run(config: &Config) -> Result<()> {
+    let mut core = Core::new()?;
+    let handle = core.handle();
+
     assert!(config.peer.is_some() || config.bind.is_some());
 
     let bind = config.bind.unwrap_or_else(|| "0.0.0.0:0".parse().unwrap());
-    let sock = UdpSocket::bind(&bind, handle)?;
+    let sock = UdpSocket::bind(&bind, &handle)?;
     info!("Bind to {}.", sock.local_addr()?);
 
     let tun = Tun::create(config.dev_name.as_ref().map(|n| n.as_str()))?;
-    info!("Tun device created: {}.", tun.get_name());
+    let tun_name = tun.get_name().to_string();
+    info!("Tun device created: {}.", &tun_name);
     tun.set_nonblocking(true)?;
 
     if let Some(ref on_up) = config.on_up {
-        ScriptRunner::new().env("TUN", tun.get_name()).run(on_up.as_bytes())?;
+        ScriptRunner::new().env("TUN", &tun_name).run(on_up.as_bytes())?;
     }
 
-    let tun = Rc::new(RefCell::new(PollEvented::new(tun, handle)?));
+    let tun = Rc::new(RefCell::new(PollEvented::new(tun, &handle)?));
     let sock = Rc::new(sock);
 
     // If peer is set, we send packets to it. Otherwise we send to who ever
@@ -82,18 +84,10 @@ pub fn titun_get_future(config: &Config,
         buf_to_send: None,
     };
 
-    Ok(Box::new(sock_to_tun.select(tun_to_sock).then(|r| match r {
+    let titun_fut = sock_to_tun.select(tun_to_sock).then(|r| match r {
         Err((e, _)) => Err(e),
         Ok(_) => unreachable!(),
-    })))
-}
-
-/// Run titun with some configuration. Will not return unless an error happens.
-pub fn run(config: &Config) -> Result<()> {
-    let mut core = Core::new()?;
-    let handle = core.handle();
-
-    let titun_fut = titun_get_future(config, &handle)?;
+    });
 
     let sigint = tokio_signal::unix::Signal::new(tokio_signal::unix::SIGINT, &handle);
     let sigint = core.run(sigint)?;
@@ -102,9 +96,8 @@ pub fn run(config: &Config) -> Result<()> {
 
     let signal_fut = sigint.select(sigterm).map_err(From::from).for_each(|s| {
         info!("Received signal {}, exiting.", s);
-        // TODO pass env vars
         if let Some(ref on_down) = config.on_down {
-            ScriptRunner::new().run(on_down.as_bytes())?;
+            ScriptRunner::new().env("TUN", &tun_name).run(on_down.as_bytes())?;
         }
         Err(TiTunError::GracefulExit)
     });
