@@ -63,14 +63,12 @@ pub fn titun_get_future(config: &Config,
     };
 
     let crypto = Rc::new(Crypto::new(config.key.clone(), config.max_diff));
-    let log_dedup = Rc::new(RefCell::new(LogDedup::new()));
 
     let sock_to_tun = SockToTun {
         crypto: crypto.clone(),
         sock: sock.clone(),
         tun: tun.clone(),
         remote_addr: remote_addr1,
-        log_dedup: log_dedup.clone(),
         buf: vec![0u8; config.bufsize],
         buf_to_write: None,
     };
@@ -80,7 +78,6 @@ pub fn titun_get_future(config: &Config,
         sock: sock,
         tun: tun,
         remote_addr: remote_addr,
-        log_dedup: log_dedup,
         buf: vec![0u8; config.bufsize],
         buf_to_send: None,
     };
@@ -127,7 +124,6 @@ struct SockToTun {
     // Don't actually need mutable reference, but make std::io::Write happy.
     tun: Rc<RefCell<PollEvented<Tun>>>,
     remote_addr: Option<Rc<RefCell<Option<SocketAddr>>>>,
-    log_dedup: Rc<RefCell<LogDedup>>,
     buf: Vec<u8>,
     buf_to_write: Option<Vec<u8>>,
 }
@@ -161,7 +157,7 @@ impl Future for SockToTun {
                 }
                 self.buf_to_write = Some(p);
             } else {
-                self.log_dedup.borrow_mut().warn("decryption failed");
+                debug!("decryption failed");
             }
         }
     }
@@ -173,7 +169,6 @@ struct TunToSock {
     // Don't actually need mutable reference, but make std::io::Read happy.
     tun: Rc<RefCell<PollEvented<Tun>>>,
     remote_addr: Rc<RefCell<Option<SocketAddr>>>,
-    log_dedup: Rc<RefCell<LogDedup>>,
     buf: Vec<u8>,
     buf_to_send: Option<Vec<u8>>,
 }
@@ -187,10 +182,6 @@ impl Future for TunToSock {
             self.buf_to_send = if let Some(ref b) = self.buf_to_send {
                 if let Some(ref a) = *self.remote_addr.borrow() {
                     try_nb!(self.sock.send_to(b.as_ref(), a));
-                } else {
-                    self.log_dedup
-                        .borrow_mut()
-                        .warn("Got packet but don't know peer address.");
                 }
                 None
             } else {
@@ -200,54 +191,5 @@ impl Future for TunToSock {
             let l = try_nb!(self.tun.borrow_mut().read(self.buf.as_mut()));
             self.buf_to_send = Some(self.crypto.encrypt(self.buf[..l].as_ref()));
         }
-    }
-}
-
-struct LogDedup {
-    previous: Option<&'static str>,
-    times: u32,
-}
-
-impl LogDedup {
-    pub fn new() -> LogDedup {
-        LogDedup {
-            previous: None,
-            times: 0,
-        }
-    }
-
-    pub fn warn(&mut self, s: &'static str) {
-        let p1 = match self.previous {
-            None => {
-                warn!("{}", s);
-                s
-            }
-            Some(p) => {
-                if p != s {
-                    self.clear();
-                    warn!("{}", s);
-                    s
-                } else {
-                    self.times += 1;
-                    p
-                }
-            }
-        };
-        self.previous = Some(p1);
-    }
-
-    fn clear(&mut self) {
-        if self.previous.is_some() && self.times > 0 {
-            warn!("Message \"{}\": repeated {} times.",
-                  self.previous.unwrap(),
-                  self.times);
-            self.times = 0;
-        }
-    }
-}
-
-impl Drop for LogDedup {
-    fn drop(&mut self) {
-        self.clear();
     }
 }
