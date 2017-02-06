@@ -45,8 +45,8 @@ pub fn titun_get_future(config: &Config,
     info!("Tun device created: {}.", tun.get_name());
     tun.set_nonblocking(true)?;
 
-    if let Some(ref script) = config.config_script {
-        ScriptRunner::new().env("TUN", tun.get_name()).run(script.as_bytes())?;
+    if let Some(ref on_up) = config.on_up {
+        ScriptRunner::new().env("TUN", tun.get_name()).run(on_up.as_bytes())?;
     }
 
     let tun = Rc::new(RefCell::new(PollEvented::new(tun, handle)?));
@@ -105,6 +105,10 @@ pub fn run(config: &Config) -> Result<()> {
 
     let signal_fut = sigint.select(sigterm).map_err(From::from).for_each(|s| {
         info!("Received signal {}, exiting.", s);
+        // TODO pass env vars
+        if let Some(ref on_down) = config.on_down {
+            ScriptRunner::new().run(on_down.as_bytes())?;
+        }
         Err(TiTunError::GracefulExit)
     });
 

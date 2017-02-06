@@ -28,7 +28,8 @@ struct Config1 {
     pub bind: Option<String>,
     pub peer: Option<String>,
     pub key: String,
-    pub config_script: Option<String>,
+    pub on_up: Option<String>,
+    pub on_down: Option<String>,
     pub bufsize: Option<usize>,
     pub max_diff: Option<u64>,
     pub dev_name: Option<String>,
@@ -40,7 +41,8 @@ pub struct Config {
     pub bind: Option<SocketAddr>,
     pub peer: Option<SocketAddr>,
     pub key: Key,
-    pub config_script: Option<String>,
+    pub on_up: Option<String>,
+    pub on_down: Option<String>,
     pub bufsize: usize,
     pub max_diff: u64,
     pub dev_name: Option<String>,
@@ -60,7 +62,7 @@ impl Config {
             for k in m.keys() {
                 let k = k.as_str().unwrap();
                 match k {
-                    "bind" | "peer" | "key" | "config_script" | "bufsize" | "max_diff" |
+                    "bind" | "peer" | "key" | "on_up" | "on_down" | "bufsize" | "max_diff" |
                     "dev_name" => {}
                     _ => warn!("unknown config {}", k),
                 }
@@ -88,7 +90,8 @@ impl Config {
             bind: bind,
             peer: peer,
             key: key,
-            config_script: c.config_script,
+            on_up: c.on_up,
+            on_down: c.on_down,
             bufsize: c.bufsize.unwrap_or(65536),
             max_diff: c.max_diff.unwrap_or(DEFAULT_MAX_DIFF),
             dev_name: c.dev_name,
@@ -125,7 +128,8 @@ mod tests {
             bind: None,
             peer: Some("127.0.0.1:3000".parse().unwrap()),
             key: decode_key("Q3bSSKKonSsSt09ShImoD6JXf4z+r2ngQaCk/FFKwF8=").unwrap(),
-            config_script: None,
+            on_up: None,
+            on_down: None,
             bufsize: 65536,
             max_diff: ::crypto::DEFAULT_MAX_DIFF,
             dev_name: None,

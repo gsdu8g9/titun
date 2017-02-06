@@ -55,7 +55,8 @@ TiTun config files are written in [yaml](http://yaml.org/). The following config
 * `bind`: Address and port to bind to.
 * `peer`: Peer address and port.
 * `key`: Encryption/authentication key.
-* `config_script`: A shell script that will be run after the tun device is created. Use this to bring the device up and set ip address, MTU, and add routes, etc.
+* `on_up`: A shell script that will be run after the tun device is created. Use this to bring the device up and set ip address, MTU, and add routes, etc.
+* `on_down`: A script that will be run when the tun device is about to be closed.
 * `bufsize`: Size of buffer when reading from tun device or receiving from socket.
 * `max_diff`: Maximum timestamp differences allowed, in milliseconds.
 * `dev_name`: Name of tun device.
