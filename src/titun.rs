@@ -24,6 +24,7 @@ use std::cell::RefCell;
 use std::convert::From;
 use std::io::{Read, Write};
 use std::net::SocketAddr;
+use std::ops::DerefMut;
 use std::rc::Rc;
 use systemd::notify_ready;
 use tokio_core::net::UdpSocket;
@@ -51,8 +52,7 @@ pub fn run(config: &Config) -> Result<()> {
         ScriptRunner::new().env("TUN", &tun_name).run(on_up.as_bytes())?;
     }
 
-    let tun = Rc::new(RefCell::new(PollEvented::new(tun, &handle)?));
-    let sock = Rc::new(sock);
+    let tun = PollEvented::new(tun, &handle)?;
 
     // If peer is set, we send packets to it. Otherwise we send to who ever
     // most recently send us an authenticated packet.
@@ -64,23 +64,24 @@ pub fn run(config: &Config) -> Result<()> {
         Some(remote_addr.clone())
     };
 
-    let crypto = Rc::new(Crypto::new(config.key.clone(), config.max_diff));
+    let crypto = Crypto::new(config.key.clone(), config.max_diff);
+
+    let common = Rc::new(RefCell::new(Common {
+        crypto: crypto,
+        sock: sock,
+        tun: tun,
+        buf: vec![0u8; config.bufsize],
+    }));
 
     let sock_to_tun = SockToTun {
-        crypto: crypto.clone(),
-        sock: sock.clone(),
-        tun: tun.clone(),
+        common: common.clone(),
         remote_addr: remote_addr1,
-        buf: vec![0u8; config.bufsize],
         buf_to_write: None,
     };
 
     let tun_to_sock = TunToSock {
-        crypto: crypto,
-        sock: sock,
-        tun: tun,
+        common: common,
         remote_addr: remote_addr,
-        buf: vec![0u8; config.bufsize],
         buf_to_send: None,
     };
 
@@ -111,13 +112,16 @@ pub fn run(config: &Config) -> Result<()> {
     }))
 }
 
-struct SockToTun {
-    crypto: Rc<Crypto>,
-    sock: Rc<UdpSocket>,
-    // Don't actually need mutable reference, but make std::io::Write happy.
-    tun: Rc<RefCell<PollEvented<Tun>>>,
-    remote_addr: Option<Rc<RefCell<Option<SocketAddr>>>>,
+struct Common {
+    crypto: Crypto,
+    sock: UdpSocket,
+    tun: PollEvented<Tun>,
     buf: Vec<u8>,
+}
+
+struct SockToTun {
+    common: Rc<RefCell<Common>>,
+    remote_addr: Option<Rc<RefCell<Option<SocketAddr>>>>,
     buf_to_write: Option<Vec<u8>>,
 }
 
@@ -131,16 +135,19 @@ impl Future for SockToTun {
     type Error = TiTunError;
 
     fn poll(&mut self) -> Poll<(), TiTunError> {
+        let mut common = self.common.borrow_mut();
+        // Explicit deref_mut to get mutable references to disjoint fields.
+        let mut common = common.deref_mut();
         loop {
             self.buf_to_write = if let Some(ref b) = self.buf_to_write {
-                try_nb!(self.tun.borrow_mut().write(b.as_slice()));
+                try_nb!(common.tun.write(b.as_slice()));
                 None
             } else {
                 None
             };
 
-            let (l, addr) = try_nb!(self.sock.recv_from(self.buf.as_mut()));
-            if let Some(p) = self.crypto.decrypt(self.buf[..l].as_ref()) {
+            let (l, addr) = try_nb!(common.sock.recv_from(common.buf.as_mut()));
+            if let Some(p) = common.crypto.decrypt(common.buf[..l].as_ref()) {
                 if let Some(ref r) = self.remote_addr {
                     let mut rr = r.borrow_mut();
                     if *rr != Some(addr) {
@@ -157,12 +164,8 @@ impl Future for SockToTun {
 }
 
 struct TunToSock {
-    crypto: Rc<Crypto>,
-    sock: Rc<UdpSocket>,
-    // Don't actually need mutable reference, but make std::io::Read happy.
-    tun: Rc<RefCell<PollEvented<Tun>>>,
+    common: Rc<RefCell<Common>>,
     remote_addr: Rc<RefCell<Option<SocketAddr>>>,
-    buf: Vec<u8>,
     buf_to_send: Option<Vec<u8>>,
 }
 
@@ -171,18 +174,21 @@ impl Future for TunToSock {
     type Error = TiTunError;
 
     fn poll(&mut self) -> Poll<(), TiTunError> {
+        let mut common = self.common.borrow_mut();
+        // Explicit deref_mut to get mutable references to disjoint fields.
+        let mut common = common.deref_mut();
         loop {
             self.buf_to_send = if let Some(ref b) = self.buf_to_send {
                 if let Some(ref a) = *self.remote_addr.borrow() {
-                    try_nb!(self.sock.send_to(b.as_ref(), a));
+                    try_nb!(common.sock.send_to(b.as_ref(), a));
                 }
                 None
             } else {
                 None
             };
 
-            let l = try_nb!(self.tun.borrow_mut().read(self.buf.as_mut()));
-            self.buf_to_send = Some(self.crypto.encrypt(self.buf[..l].as_ref()));
+            let l = try_nb!(common.tun.read(common.buf.as_mut()));
+            self.buf_to_send = Some(common.crypto.encrypt(common.buf[..l].as_ref()));
         }
     }
 }
