@@ -18,7 +18,8 @@
 use config::Config;
 use crypto::Crypto;
 use error::{Result, TiTunError};
-use futures::{Future, Poll, Stream};
+use futures::{Async, Future, Poll, Stream};
+use futures::task;
 use script_runner::ScriptRunner;
 use std::cell::RefCell;
 use std::convert::From;
@@ -138,7 +139,10 @@ impl Future for SockToTun {
         let mut common = self.common.borrow_mut();
         // Explicit deref_mut to get mutable references to disjoint fields.
         let mut common = common.deref_mut();
-        loop {
+
+        // Do not loop forever, to avoid starvation. See
+        // https://github.com/tokio-rs/tokio-core/issues/165
+        for _ in 0..128 {
             self.buf_to_write = if let Some(ref b) = self.buf_to_write {
                 try_nb!(common.tun.write(b.as_slice()));
                 None
@@ -160,6 +164,9 @@ impl Future for SockToTun {
                 debug!("decryption failed");
             }
         }
+
+        task::park().unpark();
+        Ok(Async::NotReady)
     }
 }
 
@@ -177,7 +184,8 @@ impl Future for TunToSock {
         let mut common = self.common.borrow_mut();
         // Explicit deref_mut to get mutable references to disjoint fields.
         let mut common = common.deref_mut();
-        loop {
+
+        for _ in 0..128 {
             self.buf_to_send = if let Some(ref b) = self.buf_to_send {
                 if let Some(ref a) = *self.remote_addr.borrow() {
                     try_nb!(common.sock.send_to(b.as_ref(), a));
@@ -190,5 +198,8 @@ impl Future for TunToSock {
             let l = try_nb!(common.tun.read(common.buf.as_mut()));
             self.buf_to_send = Some(common.crypto.encrypt(common.buf[..l].as_ref()));
         }
+
+        task::park().unpark();
+        Ok(Async::NotReady)
     }
 }
