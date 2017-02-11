@@ -21,6 +21,7 @@ extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate mio;
+#[macro_use]
 extern crate nix;
 #[macro_use]
 extern crate serde_derive;

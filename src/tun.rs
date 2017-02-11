@@ -17,8 +17,9 @@
 
 use mio::{Evented, Poll, PollOpt, Ready, Token};
 use mio::unix::EventedFd;
-use nix::fcntl::{self, FcntlArg, OFlag, fcntl};
-use nix::libc::{c_char, c_int, size_t};
+use nix::fcntl::{self, FcntlArg, OFlag, fcntl, open};
+use nix::libc::{c_int, c_short};
+use nix::sys::stat::Mode;
 use nix::unistd::{close, read, write};
 use std::convert::From;
 use std::ffi::{CStr, CString};
@@ -26,8 +27,15 @@ use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::mem;
 use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
 
-extern "C" {
-    fn alloc_tun(name: *const c_char, name_out: *mut c_char, name_len: size_t) -> c_int;
+ioctl!(write tunsetiff with b'T', 202; c_int);
+
+const IFF_TUN: c_short = 0x0001;
+const IFF_NO_PI: c_short = 0x1000;
+
+#[repr(C)]
+struct ifreq {
+    name: [u8; 16], // Use u8 becuase that's what CString and CStr wants.
+    flags: c_short,
 }
 
 /// A linux tun device.
@@ -59,26 +67,32 @@ impl Tun {
 
         let name =
             CString::new(name.unwrap_or("")).map_err(|e| Error::new(ErrorKind::InvalidInput, e))?;
+        let name = name.as_bytes_with_nul();
 
-        let mut name_out = [0; 16];
+        let fd = open("/dev/net/tun",
+                      fcntl::O_RDWR | fcntl::O_CLOEXEC,
+                      Mode::empty())?;
 
-        let fd = unsafe { alloc_tun(name.as_ptr(), name_out.as_mut_ptr(), name_out.len()) };
+        let mut ifr = ifreq {
+            name: [0; 16],
+            flags: IFF_TUN | IFF_NO_PI,
+        };
 
-        if fd == -1 {
-            Err(Error::last_os_error())
-        } else {
-            assert!(fd > 0);
-            let name = unsafe {
-                CStr::from_ptr(name_out.as_ptr())
-                    .to_str()
-                    .unwrap()
-                    .to_string()
-            };
-            Ok(Tun {
-                fd: fd,
-                name: name,
-            })
-        }
+        ifr.name[..name.len()].copy_from_slice(name);
+
+        unsafe { tunsetiff(fd, &ifr as *const ifreq as *const c_int) }?;
+
+        let namelen = ifr.name.iter().position(|x| *x == 0).unwrap() + 1;
+
+        let name = CStr::from_bytes_with_nul(&ifr.name[..namelen])
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        Ok(Tun {
+            fd: fd,
+            name: name,
+        })
     }
 
     /// Get name of this device. Should be the same name if you have
@@ -95,9 +109,8 @@ impl Tun {
         } else {
             flags & !fcntl::O_NONBLOCK
         };
-        fcntl(self.fd, FcntlArg::F_SETFL(flags))
-            .map(|_| ())
-            .map_err(From::from)
+        fcntl(self.fd, FcntlArg::F_SETFL(flags))?;
+        Ok(())
     }
 }
 
