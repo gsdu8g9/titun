@@ -12,7 +12,7 @@ If you need better performance and/or security, [wireguard](https://www.wireguar
 
 ## Install
 
-You can either build TiTun from source or download binarys from [GitHub releases](https://github.com/sopium/titun/releases).
+You can either build TiTun from source or download binarys or deb packages from [GitHub releases](https://github.com/sopium/titun/releases).
 
 To build TiTun you need the rust toolchain, which can be installed with [rustup](https://github.com/rust-lang-nursery/rustup.rs). You also need libsodium. It may be available from your distro's package manager. Or you can build it yourself.
 
@@ -23,8 +23,6 @@ $ cargo build --release
 ```
 
 And TiTun will available be at `target/release/titun`.
-
-The binarys at GitHub releases are statically linked. They should work on any recent x86-64 linux systems.
 
 ## Usage
 
@@ -101,13 +99,15 @@ To avoid IP fragmentation, set the MTU of the tun device to path MTU minus 68 by
 
 ### Systemd
 
-Systemd is fully supported. An example systemd service file is provided in the `contrib` dir. TiTun will notify systemd about startup completion with `systemd-notify`.
+Systemd is fully supported. An example systemd service file is provided in the `systemd` dir. TiTun will notify systemd about startup completion with `systemd-notify`.
 
-To use that service file, copy it to `/etc/systemd/system/`, install `titun` at `/usr/local/bin`, mkdir `/etc/titun/`, and put config files there, e.g. `/etc/titun/tun0.yml`, then
+If you are using the debian package, just put config files, e.g. `tunnel.yml`, at `/etc/titun/`, and
 
 ```
-# systemctl start titun@tun0
+# systemctl start titun@tunnel
 ```
+
+If you are building from source, copy `systemd/titun@.service` to `/etc/systemd/system/`, copy `titun` to `/usr/local/bin`, and the rest is the same.
 
 ## Protocol
 
