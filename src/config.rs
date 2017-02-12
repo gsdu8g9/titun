@@ -19,7 +19,7 @@ use crypto::DEFAULT_MAX_DIFF;
 use data_encoding::base64;
 use error::Result;
 use serde_yaml as yaml;
-use sodiumoxide::crypto::secretbox::{KEYBYTES, Key, gen_key};
+use sodiumoxide::crypto::secretbox::{Key, gen_key};
 use std::convert::From;
 use std::net::{SocketAddr, ToSocketAddrs};
 
@@ -100,10 +100,7 @@ impl Config {
 }
 
 pub fn decode_key(k: &str) -> Option<Key> {
-    match base64::decode(k.as_bytes()) {
-        Ok(ref k) if k.len() == KEYBYTES => Some(Key::from_slice(k.as_ref()).unwrap()),
-        _ => None,
-    }
+    base64::decode(k.as_bytes()).ok().and_then(|k| Key::from_slice(k.as_slice()))
 }
 
 pub fn genkey_base64() -> String {
