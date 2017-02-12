@@ -21,7 +21,6 @@ use nix::fcntl::{self, FcntlArg, OFlag, fcntl, open};
 use nix::libc::{c_int, c_short};
 use nix::sys::stat::Mode;
 use nix::unistd::{close, read, write};
-use std::convert::From;
 use std::ffi::{CStr, CString};
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::mem;
@@ -131,12 +130,12 @@ impl IntoRawFd for Tun {
 impl Tun {
     /// Read a packet from the tun device.
     pub fn read(&self, buf: &mut [u8]) -> Result<usize> {
-        read(self.fd, buf).map_err(From::from)
+        Ok(read(self.fd, buf)?)
     }
 
     /// Write a packet to tun device.
     pub fn write(&self, buf: &[u8]) -> Result<usize> {
-        write(self.fd, buf).map_err(From::from)
+        Ok(write(self.fd, buf)?)
     }
 }
 
