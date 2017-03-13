@@ -15,12 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
-use mio::{Evented, Poll, PollOpt, Ready, Token};
-use mio::unix::EventedFd;
-use nix::fcntl::{self, FcntlArg, OFlag, fcntl, open};
-use nix::libc::{c_int, c_short};
-use nix::sys::stat::Mode;
-use nix::unistd::{close, read, write};
+extern crate mio;
+extern crate nix;
+
+use self::mio::{Evented, Poll, PollOpt, Ready, Token};
+use self::mio::unix::EventedFd;
+use self::nix::fcntl::{self, FcntlArg, OFlag, fcntl, open};
+use self::nix::libc::{c_int, c_short};
+use self::nix::sys::stat::Mode;
+use self::nix::unistd::{close, read, write};
 use std::ffi::{CStr, CString};
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::mem;
@@ -81,7 +84,10 @@ impl Tun {
 
         unsafe { tunsetiff(fd, &ifr as *const ifreq as *const c_int) }?;
 
-        let namelen = ifr.name.iter().position(|x| *x == 0).unwrap() + 1;
+        let namelen = ifr.name
+            .iter()
+            .position(|x| *x == 0)
+            .unwrap() + 1;
 
         let name = CStr::from_bytes_with_nul(&ifr.name[..namelen])
             .unwrap()

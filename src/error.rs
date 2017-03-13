@@ -15,6 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with TiTun.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate rustc_serialize;
+extern crate serde_yaml;
+extern crate log;
+
 use std::convert::From;
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
@@ -81,8 +85,10 @@ macro_rules! impl_from_err {
     )
 }
 
-impl_from_err!(::serde_yaml::Error);
 impl_from_err!(::std::net::AddrParseError);
-impl_from_err!(::log::SetLoggerError);
+impl_from_err!(::std::num::ParseIntError);
+impl_from_err!(self::log::SetLoggerError);
+impl_from_err!(self::rustc_serialize::base64::FromBase64Error);
+impl_from_err!(self::serde_yaml::Error);
 
 pub type Result<T> = ::std::result::Result<T, TiTunError>;
