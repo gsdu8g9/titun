@@ -17,6 +17,7 @@
 
 #![feature(ptr_eq)]
 #![feature(integer_atomics)]
+#![feature(untagged_unions)]
 
 #[macro_use]
 extern crate log;

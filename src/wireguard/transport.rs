@@ -52,7 +52,11 @@ pub struct Transport {
 impl Transport {
     pub fn new_from_hs(self_id: Id, peer_id: Id, hs: HS) -> Self {
         let (x, y) = hs.get_ciphers();
-        let (s, r) = if hs.get_is_initiator() { (x, y) } else { (y, x) };
+        let (s, r) = if hs.get_is_initiator() {
+            (x, y)
+        } else {
+            (y, x)
+        };
         let sk = s.extract().0;
         let rk = r.extract().0;
 

@@ -29,6 +29,8 @@ mod ip;
 mod controller;
 // Transport session management and transport message generation/parsing.
 mod transport;
+// WireGuard UAPI.
+mod uapi;
 
 /// Re-export some types and functions from other crates, so users
 /// of this module won't have to manually pull in all these crates.
@@ -41,3 +43,4 @@ pub use self::handshake::*;
 pub use self::ip::*;
 pub use self::transport::*;
 pub use self::types::*;
+pub use self::uapi::*;

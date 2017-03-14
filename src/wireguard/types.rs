@@ -18,7 +18,6 @@
 extern crate noise_protocol;
 extern crate noise_sodiumoxide;
 extern crate sodiumoxide;
-extern crate tai64;
 
 use self::noise_protocol::DH;
 use self::noise_sodiumoxide::X25519;
