@@ -93,7 +93,7 @@ fn udp_get_handshake_init(wg: &WgState, sock: &UdpSocket, p: Vec<u8>, addr: Sock
             cookie_sign(&mut response, peer.cookie.as_ref());
             sock.send_to(&response, addr).unwrap();
 
-            let t = Transport::new_from_hs(self_id, r.peer_id, r.handshake_state, false);
+            let t = Transport::new_from_hs(self_id, r.peer_id, r.handshake_state);
             wg.id_map
                 .write()
                 .unwrap()
@@ -376,7 +376,7 @@ fn start_handshake(wg: Arc<WgState>,
                                                               &r) {
                             let mut peer = peer.write().unwrap();
 
-                            let t = Transport::new_from_hs(id, peer_id, hs, true);
+                            let t = Transport::new_from_hs(id, peer_id, hs);
 
                             peer.info.endpoint = Some(a);
                             peer.rotate_transport(t,

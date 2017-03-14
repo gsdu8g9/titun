@@ -206,12 +206,12 @@ dependencies = [
 [[package]]
 name = "noise-protocol"
 version = "0.0.3"
-source = "git+https://github.com/sopium/noise-rust?branch=sodium_aeads#1eb593385da1f14216becafdfbf01f552bef4c4f"
+source = "git+https://github.com/sopium/noise-rust?branch=sodium_aeads#19f5ac0b4c6e517b4f9965dc1c85c9a9680bd998"
 
 [[package]]
 name = "noise-sodiumoxide"
 version = "0.0.3"
-source = "git+https://github.com/sopium/noise-rust?branch=sodium_aeads#1eb593385da1f14216becafdfbf01f552bef4c4f"
+source = "git+https://github.com/sopium/noise-rust?branch=sodium_aeads#19f5ac0b4c6e517b4f9965dc1c85c9a9680bd998"
 dependencies = [
  "byteorder 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libsodium-sys 0.0.14 (git+https://github.com/sopium/sodiumoxide)",

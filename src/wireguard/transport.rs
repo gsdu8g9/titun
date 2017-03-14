@@ -50,16 +50,16 @@ pub struct Transport {
 }
 
 impl Transport {
-    pub fn new_from_hs(self_id: Id, peer_id: Id, hs: HS, is_initiator: bool) -> Self {
+    pub fn new_from_hs(self_id: Id, peer_id: Id, hs: HS) -> Self {
         let (x, y) = hs.get_ciphers();
-        let (s, r) = if is_initiator { (x, y) } else { (y, x) };
+        let (s, r) = if hs.get_is_initiator() { (x, y) } else { (y, x) };
         let sk = s.extract().0;
         let rk = r.extract().0;
 
         Transport {
             self_id: self_id,
             peer_id: peer_id,
-            is_initiator: is_initiator,
+            is_initiator: hs.get_is_initiator(),
             send_key: sk,
             recv_key: rk,
             created: Instant::now(),
