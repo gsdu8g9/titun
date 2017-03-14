@@ -25,7 +25,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::mpsc::{RecvTimeoutError, Sender, channel};
-use std::thread::{self, JoinHandle};
+use std::thread::{Builder, JoinHandle, sleep};
 use std::time::{Duration, Instant};
 use tun::Tun;
 use wireguard::*;
@@ -219,7 +219,7 @@ fn udp_get_transport(wg: &WgState, tun: &Tun, p: Vec<u8>, addr: SocketAddr) {
 ///
 /// This thread runs forever. XXX: how to monitor that?
 pub fn start_udp_recv(wg: Arc<WgState>, sock: Arc<UdpSocket>, tun: Arc<Tun>) -> JoinHandle<()> {
-    thread::spawn(move || loop {
+    Builder::new().name("UDP".to_string()).spawn(move || loop {
         let mut p = vec![0u8; BUFSIZE];
         let (len, addr) = sock.recv_from(&mut p).unwrap();
 
@@ -235,14 +235,14 @@ pub fn start_udp_recv(wg: Arc<WgState>, sock: Arc<UdpSocket>, tun: Arc<Tun>) -> 
             4 => udp_get_transport(wg.as_ref(), &tun, p, addr),
             _ => (),
         }
-    })
+    }).unwrap()
 }
 
 /// Start a new thread to read and process packets from TUN device.
 ///
 /// This thread runs forever.
 pub fn start_packet_read(wg: Arc<WgState>, sock: Arc<UdpSocket>, tun: Arc<Tun>) -> JoinHandle<()> {
-    thread::spawn(move || {
+    Builder::new().name("TUN".to_string()).spawn(move || {
         loop {
             let mut pkt = vec![0u8; BUFSIZE];
             let len = tun.read(&mut pkt).unwrap();
@@ -291,7 +291,7 @@ pub fn start_packet_read(wg: Arc<WgState>, sock: Arc<UdpSocket>, tun: Arc<Tun>) 
                 error!("Get packet from TUN device, but failed to parse it.");
             }
         }
-    })
+    }).unwrap()
 }
 
 /// Start a new thread to do handshake.
@@ -308,7 +308,7 @@ fn start_handshake(wg: Arc<WgState>,
                    peer: SharedPeerState,
                    sock: Arc<UdpSocket>)
                    -> JoinHandle<()> {
-    thread::spawn(move || {
+    Builder::new().name("handshake".to_string()).spawn(move || loop {
         let (tx, rx) = channel::<(SocketAddr, Vec<u8>)>();
         let id = Id::gen();
         debug!("start handshake {:?}", id);
@@ -403,15 +403,15 @@ fn start_handshake(wg: Arc<WgState>,
                 }
             }
         }
-    })
+    }).unwrap()
 }
 
 /// Start a new thread to do passive keep-alive, and drop expired transport sessions, etc.
 ///
 /// This thread runs forever.
 pub fn start_maintaining_thread(wg: Arc<WgState>, sock: Arc<UdpSocket>) -> JoinHandle<()> {
-    thread::spawn(move || loop {
-        thread::sleep(Duration::from_secs(3));
+    Builder::new().name("maintaining".to_string()).spawn(move || loop {
+        sleep(Duration::from_secs(1));
 
         // Detect id map leaks.
         let mut to_remove = Vec::new();
@@ -492,7 +492,7 @@ pub fn start_maintaining_thread(wg: Arc<WgState>, sock: Arc<UdpSocket>) -> JoinH
                 s.map(|id| peer.remove_peer_by_id(id));
             }
         }
-    })
+    }).unwrap()
 }
 
 impl WgState {
