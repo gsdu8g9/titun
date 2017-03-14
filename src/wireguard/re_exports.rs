@@ -20,3 +20,4 @@ extern crate noise_sodiumoxide;
 
 pub use self::noise_protocol::{Cipher, DH, Hash, U8Array};
 pub use self::noise_sodiumoxide::{ChaCha20Poly1305, SecretKey, X25519};
+pub use self::noise_sodiumoxide::init as sodium_init;

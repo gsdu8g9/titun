@@ -23,6 +23,7 @@ use std::sync::Arc;
 use systemd;
 use tun::Tun;
 use wireguard::*;
+use wireguard::re_exports::sodium_init;
 
 // TODO determine number of threads based on number of CPU threads.
 // TODO: SO_REUSEPORT.
@@ -34,6 +35,8 @@ const NUM_UDP_THREADS: usize = 1;
 const NUM_TUN_THREADS: usize = 1;
 
 pub fn run(c: Config) -> Result<()> {
+    sodium_init();
+
     let wg = WgState::new(c.info, &c.peers);
     let bind_addr = if c.listen_port.is_none() {
         "[::]:0".to_string()
